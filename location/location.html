@@ -1,0 +1,3501 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوكيشن – تحليل موقع التقاط الصور والفيديوهات</title>
+    
+    <!-- مكتبات CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .upload-area {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .drop-zone {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: #764ba2;
+            background-color: #f8f9ff;
+        }
+
+        .drop-zone .icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results {
+            display: none;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .file-preview {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9ff;
+            border-radius: 10px;
+        }
+
+        .file-icon {
+            font-size: 2rem;
+            margin-left: 15px;
+        }
+
+        .file-info h3 {
+            margin-bottom: 5px;
+            color: #667eea;
+        }
+
+        .metadata-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metadata-card {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 10px;
+            border-right: 4px solid #667eea;
+        }
+
+        .metadata-card h4 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .metadata-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding: 5px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .metadata-item:last-child {
+            border-bottom: none;
+        }
+
+        .metadata-label {
+            font-weight: bold;
+            color: #555;
+        }
+
+        .metadata-value {
+            color: #333;
+            text-align: left;
+        }
+
+        .map-container {
+            height: 400px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .video-preview {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .privacy-notice {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            text-align: center;
+            color: #2e7d32;
+        }
+
+        .error-message {
+            background: #ffebee;
+            border: 1px solid #f44336;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            text-align: center;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .coordinates {
+            background: #667eea;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .upload-area, .results {
+                padding: 20px;
+            }
+            
+            .metadata-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📍 لوكيشن</h1>
+            <p>تحليل موقع التقاط الصور والفيديوهات</p>
+        </div>
+
+        <div class="main-layout" style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
+            <div class="main-column" style="flex: 1; min-width: 450px;">
+                <div class="upload-area">
+            <div class="drop-zone" id="dropZone">
+                <div class="icon">📁</div>
+                <h3>اسحب وأفلت ملف هنا</h3>
+                <p>أو انقر لاختيار ملف</p>
+                <p><small>الصيغ المدعومة: JPG, JPEG, PNG, WEBP, TIFF, BMP, GIF, HEIC, MP4, MOV, AVI, 3GP, MKV, FLV, WMV, WEBM, PDF</small></p>
+                <p><small>الحد الأقصى للحجم: 50 ميجابايت</small></p>
+            </div>
+            <input type="file" id="fileInput" class="file-input" accept=".jpg,.jpeg,.png,.webp,.tiff,.bmp,.gif,.heic,.mp4,.mov,.avi,.3gp,.mkv,.flv,.wmv,.webm,.pdf">
+            <button class="btn" onclick="document.getElementById('fileInput').click()">اختيار ملف</button>
+            <div class="url-input-container" style="margin-top: 15px; display: flex; gap: 10px;">
+                <input type="text" id="urlInput" placeholder="أو الصق رابط صورة/فيديو هنا" style="flex-grow: 1; padding: 10px; border-radius: 25px; border: 1px solid #ccc; font-size: 0.9rem;">
+                <button class="btn" id="analyzeUrlBtn">تحليل الرابط</button>
+            </div>
+            <p style="font-size: 0.8rem; color: #666; margin-top: 10px;">ملاحظة: يجب أن يسمح الرابط بالمشاركة المباشرة (CORS enabled) ليعمل التحليل.</p>
+
+            <button class="btn" id="clearBtn" style="display: none;">تنظيف</button>
+            <button class="btn" id="exportBtn" style="display: none;">تصدير البيانات</button>
+            <button class="btn" id="batchBtn" style="display: none;">معالجة متعددة</button>
+            <button class="btn" id="compareBtn" style="display: none;">مقارنة ملفات</button>
+        </div>
+
+        <div class="loading" id="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>جاري تحليل الملف...</p>
+        </div>
+
+        <div class="error-message" id="errorMessage" style="display: none;"></div>
+
+        <div class="results" id="results">
+            <div class="file-preview" id="filePreview"></div>
+            
+            <div class="metadata-grid">
+                <div class="metadata-card">
+                    <h4>📋 معلومات الملف</h4>
+                    <div id="fileMetadata"></div>
+                </div>
+                
+                <div class="metadata-card">
+                    <h4>📸 معلومات التصوير</h4>
+                    <div id="exifMetadata"></div>
+                </div>
+                
+                <div class="metadata-card" id="gpsCard" style="display: none;">
+                    <h4>🌍 معلومات الموقع</h4>
+                    <div id="gpsMetadata"></div>
+                    <div class="coordinates" id="coordinates"></div>
+                </div>
+
+                <div class="metadata-card" id="analysisCard" style="display: none; border-color: #f44336;">
+                    <h4>🔬 تحليل وتنبيهات</h4>
+                    <div id="analysisMetadata"></div>
+                </div>
+
+                <div class="metadata-card" id="aiCard" style="display: none; border-color: #2196F3;">
+                    <h4>🤖 تحليل الذكاء الاصطناعي</h4>
+                    <div id="aiMetadata"><p>جاري تحليل محتوى الصورة...</p></div>
+                </div>
+            </div>
+
+            <div id="videoPreviewContainer" style="display: none;">
+                <h4>🎥 معاينة الفيديو</h4>
+                <video id="videoPreview" class="video-preview" controls></video>
+            </div>
+
+            <div class="privacy-notice">
+                🔒 معالجة محلية تمامًا – لا نرسل ملفاتك لأي خادم
+            </div>
+        </div>
+    </div> <!-- end .main-column -->
+    <div class="map-column" style="flex: 1; min-width: 400px; position: sticky; top: 20px;">
+        <div id="sideMapContainer" class="map-container" style="height: 70vh; border-radius: 15px; background: #f8f9ff; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 25px rgba(0,0,0,0.15); border: 2px solid #e0e0e0;">
+            <span id="sideMapPlaceholder" style="color: #888; text-align: center; font-size: 1.2rem; font-weight: 500;">🗺️ الخريطة ستظهر هنا</span>
+        </div>
+    </div> <!-- end .map-column -->
+</div> <!-- end .main-layout -->
+    </div>
+
+    <!-- مكتبات JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/exif-js@2.3.0/exif.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsmediatags@3.9.7/dist/jsmediatags.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/exiftool-vendored@21.0.0/dist/exiftool.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <!-- مكتبات الذكاء الاصطناعي -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@latest/dist/coco-ssd.min.js"></script>
+
+    <script>
+        class LocationAnalyzer {
+            constructor() {
+                this.currentFile = null;
+            this.currentMap = null;
+            this.currentMarker = null;
+            this.currentMetadata = null;
+            this.aiModel = null;
+            this.batchFiles = [];
+            this.batchResults = [];
+            this.initEventListeners();
+            }
+
+            initEventListeners() {
+                const dropZone = document.getElementById('dropZone');
+                const fileInput = document.getElementById('fileInput');
+                const clearBtn = document.getElementById('clearBtn');
+
+                // منطقة السحب والإفلات
+                dropZone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    dropZone.classList.add('dragover');
+                });
+
+                dropZone.addEventListener('dragleave', () => {
+                    dropZone.classList.remove('dragover');
+                });
+
+                dropZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('dragover');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        this.handleFile(files[0]);
+                    }
+                });
+
+                // زر اختيار الملف
+                fileInput.addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        this.handleFile(e.target.files[0]);
+                    }
+                });
+
+                // زر التنظيف
+                clearBtn.addEventListener('click', () => {
+                    this.clearAnalysis();
+                });
+
+                // زر تصدير البيانات
+                const exportBtn = document.getElementById('exportBtn');
+                exportBtn.addEventListener('click', () => {
+                    this.exportData();
+                });
+
+                // زر المعالجة المتعددة
+                const batchBtn = document.getElementById('batchBtn');
+                batchBtn.addEventListener('click', () => {
+                    this.showBatchDialog();
+                });
+
+                // زر مقارنة الملفات
+                const compareBtn = document.getElementById('compareBtn');
+                compareBtn.addEventListener('click', () => {
+                    this.showCompareDialog();
+                });
+
+                // زر تحليل الرابط
+                const analyzeUrlBtn = document.getElementById('analyzeUrlBtn');
+                analyzeUrlBtn.addEventListener('click', () => {
+                    this.analyzeUrl();
+                });
+            }
+
+            async analyzeUrl() {
+                const urlInput = document.getElementById('urlInput');
+                const url = urlInput.value.trim();
+
+                if (!url) {
+                    this.showError('الرجاء إدخال رابط صالح');
+                    return;
+                }
+
+                // التحقق من صحة الرابط بشكل مبدئي
+                try {
+                    new URL(url);
+                } catch (_) {
+                    this.showError('الرابط الذي أدخلته غير صالح');
+                    return;
+                }
+
+                this.showLoading(true);
+                this.hideError();
+
+                try {
+                    // جلب الملف من الرابط
+                    const response = await fetch(url);
+
+                    if (!response.ok) {
+                        throw new Error(`فشل جلب الملف: ${response.status} ${response.statusText}`);
+                    }
+
+                    const blob = await response.blob();
+
+                    // استخراج اسم الملف من الرابط
+                    const fileName = url.substring(url.lastIndexOf('/') + 1).split('?')[0] || 'file_from_url';
+
+                    // إنشاء كائن "File" من البيانات التي تم جلبها
+                    const file = new File([blob], fileName, { type: blob.type });
+
+                    // الآن يمكننا استخدام الدالة الحالية لتحليل الملف
+                    this.handleFile(file);
+
+                } catch (error) {
+                    this.showError(`حدث خطأ أثناء جلب وتحليل الرابط: ${error.message}. تأكد من أن الرابط صحيح وأن الخادم يسمح بمشاركة الموارد (CORS).`);
+                    this.showLoading(false);
+                }
+            }
+
+            handleFile(file) {
+                // التحقق من الحجم (50 ميجابايت)
+                const maxSize = 50 * 1024 * 1024; // 50 MB
+                if (file.size > maxSize) {
+                    this.showError('حجم الملف يتجاوز الحد الأقصى المسموح به (50 ميجابايت)');
+                    return;
+                }
+
+                // التحقق من الصيغة
+                const supportedTypes = [
+                    // الصور
+                    'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 
+                    'image/tiff', 'image/bmp', 'image/gif', 'image/heic',
+                    // الفيديوهات
+                    'video/mp4', 'video/mov', 'video/avi', 'video/3gpp',
+                    'video/x-msvideo', 'video/x-flv', 'video/webm', 'video/x-ms-wmv',
+                    'video/mkv', 'video/x-matroska',
+                    // المستندات
+                    'application/pdf'
+                ];
+                
+                if (!supportedTypes.includes(file.type)) {
+                    this.showError('صيغة الملف غير مدعومة. الصيغ المدعومة: JPG, JPEG, PNG, WEBP, MP4, MOV, AVI, 3GP');
+                    return;
+                }
+
+                this.currentFile = file;
+                this.analyzeFile(file);
+            }
+
+            async analyzeFile(file) {
+                this.showLoading(true);
+                this.hideError();
+
+                try {
+                    // عرض معاينة الملف
+                    this.displayFilePreview(file);
+
+                    let metadata;
+                    if (file.type.startsWith('image/')) {
+                        metadata = await this.analyzeImageAdvanced(file);
+                        this.analyzeImageWithAI(file); // لا ننتظر إكمالها، تعمل في الخلفية
+                    } else if (file.type.startsWith('video/')) {
+                        metadata = await this.analyzeVideoAdvanced(file);
+                    } else if (file.type === 'application/pdf') {
+                        metadata = await this.analyzePDF(file);
+                    }
+
+                    if (metadata) {
+                        this.currentMetadata = metadata;
+                        const tamperingResults = this.detectRealTampering(metadata);
+                        this.displayTamperingAnalysis(tamperingResults);
+                    }
+
+                    this.showResults();
+                    document.getElementById('clearBtn').style.display = 'inline-block';
+                    document.getElementById('exportBtn').style.display = 'inline-block';
+                    document.getElementById('batchBtn').style.display = 'inline-block';
+                    document.getElementById('compareBtn').style.display = 'inline-block';
+
+                } catch (error) {
+                    this.showError('حدث خطأ أثناء تحليل الملف: ' + error.message);
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            displayFilePreview(file) {
+                const preview = document.getElementById('filePreview');
+                const fileType = file.type.startsWith('image/') ? 'صورة' : 'فيديو';
+                const icon = file.type.startsWith('image/') ? '🖼️' : '🎥';
+                
+                preview.innerHTML = `
+                    <div class="file-icon">${icon}</div>
+                    <div class="file-info">
+                        <h3>${fileType}: ${file.name}</h3>
+                        <p>الحجم: ${this.formatFileSize(file.size)}</p>
+                        <p>النوع: ${file.type}</p>
+                    </div>
+                `;
+            }
+
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 بايت';
+                const k = 1024;
+                const sizes = ['بايت', 'كيلوبايت', 'ميجابايت', 'جيجابايت'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            async analyzeImageAdvanced(file) {
+                // تحليل متعدد المستويات للصور
+                try {
+                    // المحاولة الأولى: ExifTool المتقدم
+                    const exifToolData = await this.analyzeWithExifTool(file);
+                    if (exifToolData) {
+                        this.displayAdvancedImageMetadata(exifToolData);
+                        
+                        const gpsData = this.extractAdvancedGPS(exifToolData);
+                        if (gpsData) {
+                            this.displayGPSData(gpsData);
+                            this.displayMap(gpsData.latitude, gpsData.longitude);
+                            
+                            // إذا فيه مسار GPS (GPS Track)
+                            if (gpsData.track && gpsData.track.length > 0) {
+                                this.displayGPSTrack(gpsData.track);
+                            }
+                        }
+                        return;
+                    }
+                } catch (error) {
+                    console.warn('ExifTool failed, falling back to basic EXIF:', error);
+                }
+
+                // المحاولة الثانية: exif-js الأساسي
+                return this.analyzeImageBasic(file);
+            }
+
+            async analyzeImageBasic(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            try {
+                                EXIF.getData(img, () => {
+                                    const exifData = EXIF.getAllTags(img);
+                                    this.displayImageMetadata(exifData);
+                                    
+                                    const gpsData = this.extractGPSFromEXIF(exifData);
+                                    if (gpsData) {
+                                        this.displayGPSData(gpsData);
+                                        this.displayMap(gpsData.latitude, gpsData.longitude);
+                                    }
+                                    
+                                    resolve();
+                                });
+                            } catch (error) {
+                                reject(error);
+                            }
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            async analyzeWithExifTool(file) {
+                // يستخدم تحليلًا ثنائيًا متقدمًا لاستخراج البيانات الوصفية
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        const arrayBuffer = e.target.result;
+                        const metadata = await this.extractAdvancedBinaryMetadata(arrayBuffer);
+                        resolve(metadata);
+                    };
+                    reader.readAsArrayBuffer(file);
+                });
+            }
+
+            async extractAdvancedBinaryMetadata(arrayBuffer) {
+                const view = new DataView(arrayBuffer);
+                const metadata = {
+                    basic: {},
+                    advanced: {},
+                    hidden: {},
+                    gps: {}
+                };
+
+                // تحليل الهيكل الثنائي للصورة
+                try {
+                    // JPEG analysis
+                    if (this.isJPEG(view)) {
+                        await this.analyzeJPEGStructure(view, metadata);
+                    }
+                    // PNG analysis  
+                    else if (this.isPNG(view)) {
+                        await this.analyzePNGStructure(view, metadata);
+                    }
+                    // TIFF analysis
+                    else if (this.isTIFF(view)) {
+                        await this.analyzeTIFFStructure(view, metadata);
+                    }
+                    
+                    // استخراج البيانات المخفية
+                    await this.extractHiddenData(view, metadata);
+                    
+                } catch (error) {
+                    console.warn('Advanced binary analysis failed:', error);
+                }
+
+                return metadata;
+            }
+
+            isJPEG(view) {
+                return view.getUint16(0) === 0xFFD8;
+            }
+
+            isPNG(view) {
+                return view.getUint32(0) === 0x89504E47;
+            }
+
+            isTIFF(view) {
+                const firstBytes = view.getUint16(0);
+                return firstBytes === 0x4949 || firstBytes === 0x4D4D;
+            }
+
+            async analyzeJPEGStructure(view, metadata) {
+                let offset = 2;
+                
+                while (offset < view.byteLength - 4) {
+                    const marker = view.getUint16(offset);
+                    const length = view.getUint16(offset + 2);
+                    
+                    // App markers (EXIF, GPS, etc.)
+                    if (marker >= 0xFFE0 && marker <= 0xFFEF) {
+                        const appData = new Uint8Array(view.buffer, offset + 4, length - 2);
+                        
+                        if (marker === 0xFFE1) { // APP1 - EXIF
+                            await this.parseEXIFSegment(appData, metadata);
+                        } else if (marker === 0xFFE2) { // APP2 - ICC Profile
+                            metadata.advanced.iccProfile = this.parseICCProfile(appData);
+                        } else if (marker === 0xFFED) { // APP13 - IPTC
+                            metadata.advanced.iptc = this.parseIPTC(appData);
+                        }
+                    }
+                    
+                    offset += 2 + length;
+                    
+                    if (marker === 0xFFDA) break; // Start of scan
+                }
+            }
+
+            async analyzePNGStructure(view, metadata) {
+                let offset = 8; // Skip PNG signature
+                
+                while (offset < view.byteLength - 8) {
+                    const length = view.getUint32(offset);
+                    const type = this.readString(view, offset + 4, 4);
+                    
+                    if (type === 'tEXt') {
+                        const textData = new Uint8Array(view.buffer, offset + 8, length);
+                        metadata.advanced.textChunks = this.parsePNGText(textData);
+                    } else if (type === 'tIME') {
+                        metadata.advanced.timestamp = this.parsePNGTime(view, offset + 8);
+                    }
+                    
+                    offset += 12 + length;
+                }
+            }
+
+            async analyzeTIFFStructure(view, metadata) {
+                const littleEndian = view.getUint16(0) === 0x4949;
+                const ifdOffset = view.getUint32(4, littleEndian);
+                
+                await this.parseTIFFIFD(view, ifdOffset, littleEndian, metadata);
+            }
+
+            async parseEXIFSegment(data, metadata) {
+                try {
+                    const exifData = EXIF.readFromBinaryFile(data.buffer);
+                    if (exifData) {
+                        metadata.basic = { ...metadata.basic, ...exifData };
+                        
+                        // استخراج معلومات GPS المتقدمة
+                        if (exifData.GPSLatitude && exifData.GPSLongitude) {
+                            metadata.gps.latitude = this.convertDMSToDecimal(
+                                exifData.GPSLatitude, exifData.GPSLatitudeRef
+                            );
+                            metadata.gps.longitude = this.convertDMSToDecimal(
+                                exifData.GPSLongitude, exifData.GPSLongitudeRef
+                            );
+                            
+                            // GPS Track (للصور المتعددة)
+                            if (exifData.GPSTrack) {
+                                metadata.gps.track = this.parseGPSTrack(exifData);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.warn('EXIF parsing failed:', error);
+                }
+            }
+
+            parseICCProfile(data) {
+                try {
+                    return {
+                        profileSize: data.length,
+                        colorSpace: this.readString(data, 16, 4),
+                        profileClass: this.readString(data, 12, 4)
+                    };
+                } catch (error) {
+                    return null;
+                }
+            }
+
+            parseIPTC(data) {
+                const iptc = {};
+                try {
+                    let offset = 0;
+                    while (offset < data.length - 5) {
+                        if (data[offset] === 0x1C) {
+                            const recordNumber = data[offset + 1];
+                            const dataSetNumber = data[offset + 2];
+                            const dataLength = (data[offset + 3] << 8) | data[offset + 4];
+                            
+                            if (offset + 5 + dataLength <= data.length) {
+                                const fieldData = this.readString(data, offset + 5, dataLength);
+                                iptc[`${recordNumber}:${dataSetNumber}`] = fieldData;
+                            }
+                            offset += 5 + dataLength;
+                        } else {
+                            offset++;
+                        }
+                    }
+                } catch (error) {
+                    console.warn('IPTC parsing failed:', error);
+                }
+                return iptc;
+            }
+
+            parsePNGText(data) {
+                const textChunks = {};
+                try {
+                    let offset = 0;
+                    while (offset < data.length && data[offset] !== 0) {
+                        const keywordEnd = data.indexOf(0, offset);
+                        if (keywordEnd === -1) break;
+                        
+                        const keyword = this.readString(data, offset, keywordEnd - offset);
+                        const textContent = this.readString(data, keywordEnd + 1, data.length - keywordEnd - 1);
+                        
+                        textChunks[keyword] = textContent;
+                        break; // Only one text chunk per tEXt
+                    }
+                } catch (error) {
+                    console.warn('PNG text parsing failed:', error);
+                }
+                return textChunks;
+            }
+
+            parsePNGTime(view, offset) {
+                try {
+                    const year = view.getUint16(offset);
+                    const month = view.getUint8(offset + 2);
+                    const day = view.getUint8(offset + 3);
+                    const hour = view.getUint8(offset + 4);
+                    const minute = view.getUint8(offset + 5);
+                    const second = view.getUint8(offset + 6);
+                    
+                    return new Date(year, month - 1, day, hour, minute, second).toISOString();
+                } catch (error) {
+                    return null;
+                }
+            }
+
+            parseGPSTrack(exifData) {
+                const track = [];
+                try {
+                    // This is a simplified version - real implementation would parse GPS track data
+                    if (exifData.GPSLatitude && exifData.GPSLongitude) {
+                        track.push({
+                            lat: this.convertDMSToDecimal(exifData.GPSLatitude, exifData.GPSLatitudeRef),
+                            lon: this.convertDMSToDecimal(exifData.GPSLongitude, exifData.GPSLongitudeRef),
+                            time: exifData.GPSTimeStamp || exifData.DateTimeOriginal
+                        });
+                    }
+                } catch (error) {
+                    console.warn('GPS track parsing failed:', error);
+                }
+                return track;
+            }
+
+            async extractHiddenData(view, metadata) {
+                // استخراج البيانات المخفية والمغمورة
+                try {
+                    // البحث عن توقيعات مائية
+                    metadata.hidden.watermarks = this.findWatermarks(view);
+                    
+                    // البحث عن بيانات مضمنة
+                    metadata.hidden.embedded = this.findEmbeddedData(view);
+                    
+                } catch (error) {
+                    console.warn('Hidden data extraction failed:', error);
+                }
+            }
+
+            findWatermarks(view) {
+                const watermarks = [];
+                try {
+                    // بحث عن توقيعات مائية معروفة
+                    const knownSignatures = [
+                        { name: 'Digimarc', pattern: [0x44, 0x69, 0x67, 0x69] },
+                        { name: 'Adobe', pattern: [0x41, 0x64, 0x6F, 0x62] }
+                    ];
+                    
+                    for (const sig of knownSignatures) {
+                        if (this.findPattern(view, sig.pattern)) {
+                            watermarks.push(sig.name);
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Watermark detection failed:', error);
+                }
+                return watermarks;
+            }
+
+            findEmbeddedData(view) {
+                const embedded = [];
+                try {
+                    // البحث عن ملفات مضمنة
+                    const patterns = [
+                        { name: 'ZIP', pattern: [0x50, 0x4B, 0x03, 0x04] },
+                        { name: 'PDF', pattern: [0x25, 0x50, 0x44, 0x46] },
+                        { name: 'PNG', pattern: [0x89, 0x50, 0x4E, 0x47] }
+                    ];
+                    
+                    for (const pattern of patterns) {
+                        if (this.findPattern(view, pattern.pattern)) {
+                            embedded.push(pattern.name);
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Embedded data detection failed:', error);
+                }
+                return embedded;
+            }
+
+            detectRealTampering(metadata) {
+                const warnings = [];
+                const basic = metadata.basic || {};
+
+                // 1. فحص برنامج التعديل
+                const software = basic.Software || basic.Producer || basic.Creator || '';
+                const knownEditors = ['photoshop', 'gimp', 'paint.net', 'lightroom', 'snapseed', 'canva'];
+                for (const editor of knownEditors) {
+                    if (software.toLowerCase().includes(editor)) {
+                        warnings.push(`تم التعديل بواسطة: ${software}`);
+                        break;
+                    }
+                }
+
+                // 2. فحص عدم تطابق التواريخ
+                const createDate = basic.DateTimeOriginal || basic.CreateDate || basic.creationDate;
+                const modifyDate = basic.ModifyDate || basic.modDate;
+
+                if (createDate && modifyDate) {
+                    try {
+                        const d1 = new Date(createDate.replace(/(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3'));
+                        const d2 = new Date(modifyDate.replace(/(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3'));
+                        // Add a 1-minute tolerance for minor discrepancies
+                        if (Math.abs(d1.getTime() - d2.getTime()) > 60000) {
+                            warnings.push('تاريخ التعديل لا يطابق تاريخ الإنشاء الأصلي.');
+                        }
+                    } catch (e) {
+                        console.warn('Date comparison failed:', e);
+                    }
+                }
+
+                // 3. فحص بيانات السجل (History)
+                if (basic.History) {
+                    warnings.push('يحتوي الملف على سجل تعديلات.');
+                }
+
+                // 4. فحص دقة الصورة (للصور)
+                if (basic.ImageWidth && basic.ImageHeight && (basic.ImageWidth < 200 || basic.ImageHeight < 200)) {
+                    warnings.push('دقة الصورة منخفضة جدًا، قد تكون لقطة شاشة أو صورة مصغرة.');
+                }
+
+                return warnings;
+            }
+
+            displayTamperingAnalysis(warnings) {
+                const analysisCard = document.getElementById('analysisCard');
+                const analysisMetadata = document.getElementById('analysisMetadata');
+
+                if (warnings.length > 0) {
+                    analysisCard.style.display = 'block';
+                    let html = '';
+                    warnings.forEach(warning => {
+                        html += `
+                            <div class="metadata-item" style="border-color: #f44336;">
+                                <span class="metadata-label">⚠️</span>
+                                <span class="metadata-value" style="color: #c62828;">${warning}</span>
+                            </div>
+                        `;
+                    });
+                    analysisMetadata.innerHTML = html;
+                } else {
+                    analysisCard.style.display = 'none';
+                }
+            }
+
+            findPattern(view, pattern) {
+                try {
+                    for (let i = 0; i < view.byteLength - pattern.length; i++) {
+                        let found = true;
+                        for (let j = 0; j < pattern.length; j++) {
+                            if (view.getUint8(i + j) !== pattern[j]) {
+                                found = false;
+                                break;
+                            }
+                        }
+                        if (found) return true;
+                    }
+                } catch (error) {
+                    console.warn('Pattern search failed:', error);
+                }
+                return false;
+            }
+
+            hasInconsistentMetadata(view) {
+                // محاكاة للكشف عن ميتاداتا غير متسقة
+                return false; // Placeholder
+            }
+
+            hasCompressionArtifacts(view) {
+                // محاكاة للكشف عن أثر ضغط
+                return false; // Placeholder
+            }
+
+            readString(data, offset, length) {
+                try {
+                    const bytes = new Uint8Array(data.buffer || data, offset, length);
+                    return new TextDecoder().decode(bytes);
+                } catch (error) {
+                    return '';
+                }
+            }
+
+            extractAdvancedGPS(metadata) {
+                if (!metadata.gps || !metadata.gps.latitude || !metadata.gps.longitude) {
+                    return null;
+                }
+
+                return {
+                    latitude: metadata.gps.latitude,
+                    longitude: metadata.gps.longitude,
+                    altitude: metadata.advanced.GPSAltitude || null,
+                    accuracy: metadata.advanced.GPSDOP || null,
+                    speed: metadata.advanced.GPSSpeed || null,
+                    direction: metadata.advanced.GPSTrack || null,
+                    timestamp: metadata.advanced.GPSDateStamp || metadata.basic.DateTimeOriginal,
+                    track: metadata.gps.track || []
+                };
+            }
+
+            displayAdvancedImageMetadata(metadata) {
+                const fileMetadata = document.getElementById('fileMetadata');
+                const exifMetadata = document.getElementById('exifMetadata');
+
+                // عرض المعلومات الأساسية المتقدمة
+                let basicHtml = `
+                    <div class="metadata-item">
+                        <span class="metadata-label">نوع الملف:</span>
+                        <span class="metadata-value">صورة متقدمة</span>
+                    </div>
+                `;
+
+                if (metadata.basic.DateTime) {
+                    basicHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">التاريخ والوقت:</span>
+                            <span class="metadata-value">${metadata.basic.DateTime}</span>
+                        </div>
+                    `;
+                }
+
+                fileMetadata.innerHTML = basicHtml;
+
+                // عرض المعلومات المتقدمة
+                let advancedHtml = '';
+
+                // معلومات الجهاز
+                if (metadata.basic.Make || metadata.basic.Model) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">الجهاز:</span>
+                            <span class="metadata-value">${metadata.basic.Make || ''} ${metadata.basic.Model || ''}</span>
+                        </div>
+                    `;
+                }
+
+                // معلومات التصوير المتقدمة
+                if (metadata.basic.FNumber) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">فتحة العدسة:</span>
+                            <span class="metadata-value">f/${metadata.basic.FNumber}</span>
+                        </div>
+                    `;
+                }
+
+                if (metadata.basic.ExposureTime) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">سرعة الغالق:</span>
+                            <span class="metadata-value">${metadata.basic.ExposureTime} ثانية</span>
+                        </div>
+                    `;
+                }
+
+                if (metadata.basic.ISOSpeedRatings) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">ISO:</span>
+                            <span class="metadata-value">${metadata.basic.ISOSpeedRatings}</span>
+                        </div>
+                    `;
+                }
+
+                // معلومات ICC Profile
+                if (metadata.advanced.iccProfile) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">ملف الألوان:</span>
+                            <span class="metadata-value">${metadata.advanced.iccProfile.colorSpace}</span>
+                        </div>
+                    `;
+                }
+
+                // معلومات IPTC
+                if (metadata.advanced.iptc && Object.keys(metadata.advanced.iptc).length > 0) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">IPTC:</span>
+                            <span class="metadata-value">${Object.keys(metadata.advanced.iptc).length} حقل</span>
+                        </div>
+                    `;
+                }
+
+                // البيانات المخفية
+                if (metadata.hidden && (metadata.hidden.watermarks.length > 0 || metadata.hidden.embedded.length > 0)) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">بيانات مخفية:</span>
+                            <span class="metadata-value">
+                                ${metadata.hidden.watermarks.length} توقيع مائي,
+                                ${metadata.hidden.embedded.length} ملف مضمن
+                            </span>
+                        </div>
+                    `;
+                }
+
+                // كشف التلاعب
+                if (metadata.hidden && metadata.hidden.tampering.length > 0) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">تحذيرات:</span>
+                            <span class="metadata-value" style="color: #f44336;">
+                                ${metadata.hidden.tampering.join(', ')}
+                            </span>
+                        </div>
+                    `;
+                }
+
+                exifMetadata.innerHTML = advancedHtml || '<p>لا توجد معلومات متقدمة متاحة</p>';
+            }
+
+            displayGPSTrack(track) {
+                if (!this.currentMap || track.length < 2) return;
+
+                const coordinates = track.map(point => [point.lat, point.lon]);
+                
+                // رسم مسار GPS
+                const polyline = L.polyline(coordinates, {
+                    color: 'blue',
+                    weight: 3,
+                    opacity: 0.7
+                }).addTo(this.currentMap);
+
+                // إضافة علامات على النقاط
+                track.forEach((point, index) => {
+                    const marker = L.marker([point.lat, point.lon])
+                        .addTo(this.currentMap)
+                        .bindPopup(`
+                            <div style="text-align: center;">
+                                <strong>نقطة ${index + 1}</strong><br>
+                                الوقت: ${point.time || 'غير متاح'}<br>
+                                الإحداثيات: ${point.lat.toFixed(6)}, ${point.lon.toFixed(6)}
+                            </div>
+                        `);
+                });
+
+                // تكبير الخريطة لعرض المسار بالكامل
+                this.currentMap.fitBounds(polyline.getBounds());
+            }
+
+            async analyzeVideoAdvanced(file) {
+                // تحليل متقدم للفيديو
+                try {
+                    // المحاولة الأولى: تحليل متقدم للفيديو
+                    const advancedVideoData = await this.analyzeVideoDeep(file);
+                    if (advancedVideoData) {
+                        this.displayAdvancedVideoMetadata(advancedVideoData);
+                        
+                        const gpsData = this.extractGPSFromAdvancedVideo(advancedVideoData);
+                        if (gpsData) {
+                            this.displayGPSData(gpsData);
+                            this.displayMap(gpsData.latitude, gpsData.longitude);
+                        }
+                        
+                        this.displayVideoPreview(file);
+                        return;
+                    }
+                } catch (error) {
+                    console.warn('Advanced video analysis failed:', error);
+                }
+
+                // المحاولة الثانية: jsmediatags الأساسي
+                return this.analyzeVideoBasic(file);
+            }
+
+            async analyzeVideoBasic(file) {
+                return new Promise((resolve, reject) => {
+                    jsmediatags.read(file, {
+                        onSuccess: (tag) => {
+                            try {
+                                this.displayVideoMetadata(tag.tags);
+                                
+                                const gpsData = this.extractGPSFromVideo(tag.tags);
+                                if (gpsData) {
+                                    this.displayGPSData(gpsData);
+                                    this.displayMap(gpsData.latitude, gpsData.longitude);
+                                }
+                                
+                                this.displayVideoPreview(file);
+                                resolve();
+                            } catch (error) {
+                                reject(error);
+                            }
+                        },
+                        onError: (error) => {
+                            this.displayBasicVideoMetadata(file);
+                            reject(new Error('فشل قراءة metadata الفيديو'));
+                        }
+                    });
+                });
+            }
+
+            async analyzeVideoDeep(file) {
+                // تحليل عميق للفيديو
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        const arrayBuffer = e.target.result;
+                        const metadata = await this.extractAdvancedVideoMetadata(arrayBuffer);
+                        resolve(metadata);
+                    };
+                    reader.readAsArrayBuffer(file);
+                });
+            }
+
+            async extractAdvancedVideoMetadata(arrayBuffer) {
+                const metadata = {
+                    basic: {},
+                    advanced: {},
+                    hidden: {},
+                    gps: {}
+                };
+
+                try {
+                    // تحليل الهيكل الثنائي للفيديو
+                    const view = new DataView(arrayBuffer);
+                    
+                    // MP4/MOV analysis
+                    if (this.isMP4(view)) {
+                        await this.analyzeMP4Structure(view, metadata);
+                    }
+                    // AVI analysis
+                    else if (this.isAVI(view)) {
+                        await this.analyzeAVIStructure(view, metadata);
+                    }
+                    // MKV analysis
+                    else if (this.isMKV(view)) {
+                        await this.analyzeMKVStructure(view, metadata);
+                    }
+                    
+                    // استخراج البيانات المخفية
+                    await this.extractHiddenVideoData(view, metadata);
+                    
+                } catch (error) {
+                    console.warn('Advanced video analysis failed:', error);
+                }
+
+                return metadata;
+            }
+
+            isMP4(view) {
+                // Check for ftyp box
+                return view.getUint32(4) === 0x66747970;
+            }
+
+            isAVI(view) {
+                // Check for RIFF header
+                return view.getUint32(0) === 0x52494646 && view.getUint32(8) === 0x41564920;
+            }
+
+            isMKV(view) {
+                // Check for EBML header
+                return view.getUint32(0) === 0x1A45DFA3;
+            }
+
+            async analyzeMP4Structure(view, metadata) {
+                try {
+                    let offset = 0;
+                    
+                    while (offset < view.byteLength - 8) {
+                        const boxSize = view.getUint32(offset);
+                        const boxType = this.readString(view, offset + 4, 4);
+                        
+                        if (boxType === 'moov') {
+                            await this.parseMP4Moov(view, offset + 8, boxSize - 8, metadata);
+                        } else if (boxType === 'uuid') {
+                            await this.parseMP4UUID(view, offset + 8, boxSize - 8, metadata);
+                        }
+                        
+                        if (boxSize === 0) break;
+                        offset += boxSize;
+                    }
+                } catch (error) {
+                    console.warn('MP4 structure analysis failed:', error);
+                }
+            }
+
+            async parseMP4Moov(view, offset, size, metadata) {
+                try {
+                    let currentOffset = offset;
+                    
+                    while (currentOffset < offset + size - 8) {
+                        const boxSize = view.getUint32(currentOffset);
+                        const boxType = this.readString(view, currentOffset + 4, 4);
+                        
+                        if (boxType === 'mvhd') {
+                            metadata.advanced.creationTime = new Date(view.getUint32(currentOffset + 12) * 1000 + 2082844800000);
+                            metadata.advanced.duration = view.getUint32(currentOffset + 24);
+                        } else if (boxType === 'trak') {
+                            await this.parseMP4Trak(view, currentOffset + 8, boxSize - 8, metadata);
+                        }
+                        
+                        if (boxSize === 0) break;
+                        currentOffset += boxSize;
+                    }
+                } catch (error) {
+                    console.warn('MP4 moov parsing failed:', error);
+                }
+            }
+
+            async parseMP4Trak(view, offset, size, metadata) {
+                try {
+                    let currentOffset = offset;
+                    
+                    while (currentOffset < offset + size - 8) {
+                        const boxSize = view.getUint32(currentOffset);
+                        const boxType = this.readString(view, currentOffset + 4, 4);
+                        
+                        if (boxType === 'mdia') {
+                            await this.parseMP4Mdia(view, currentOffset + 8, boxSize - 8, metadata);
+                        }
+                        
+                        if (boxSize === 0) break;
+                        currentOffset += boxSize;
+                    }
+                } catch (error) {
+                    console.warn('MP4 trak parsing failed:', error);
+                }
+            }
+
+            async parseMP4Mdia(view, offset, size, metadata) {
+                try {
+                    let currentOffset = offset;
+                    
+                    while (currentOffset < offset + size - 8) {
+                        const boxSize = view.getUint32(currentOffset);
+                        const boxType = this.readString(view, currentOffset + 4, 4);
+                        
+                        if (boxType === 'hdlr') {
+                            const handlerType = this.readString(view, currentOffset + 12, 4);
+                            if (handlerType === 'vide') {
+                                metadata.advanced.hasVideo = true;
+                            } else if (handlerType === 'soun') {
+                                metadata.advanced.hasAudio = true;
+                            }
+                        } else if (boxType === 'minf') {
+                            await this.parseMP4Minf(view, currentOffset + 8, boxSize - 8, metadata);
+                        }
+                        
+                        if (boxSize === 0) break;
+                        currentOffset += boxSize;
+                    }
+                } catch (error) {
+                    console.warn('MP4 mdia parsing failed:', error);
+                }
+            }
+
+            async parseMP4Minf(view, offset, size, metadata) {
+                try {
+                    let currentOffset = offset;
+                    
+                    while (currentOffset < offset + size - 8) {
+                        const boxSize = view.getUint32(currentOffset);
+                        const boxType = this.readString(view, currentOffset + 4, 4);
+                        
+                        if (boxType === 'stbl') {
+                            await this.parseMP4Stbl(view, currentOffset + 8, boxSize - 8, metadata);
+                        }
+                        
+                        if (boxSize === 0) break;
+                        currentOffset += boxSize;
+                    }
+                } catch (error) {
+                    console.warn('MP4 minf parsing failed:', error);
+                }
+            }
+
+            async parseMP4Stbl(view, offset, size, metadata) {
+                try {
+                    let currentOffset = offset;
+                    
+                    while (currentOffset < offset + size - 8) {
+                        const boxSize = view.getUint32(currentOffset);
+                        const boxType = this.readString(view, currentOffset + 4, 4);
+                        
+                        if (boxType === 'stsd') {
+                            await this.parseMP4Stsd(view, currentOffset + 8, boxSize - 8, metadata);
+                        }
+                        
+                        if (boxSize === 0) break;
+                        currentOffset += boxSize;
+                    }
+                } catch (error) {
+                    console.warn('MP4 stbl parsing failed:', error);
+                }
+            }
+
+            async parseMP4Stsd(view, offset, size, metadata) {
+                try {
+                    const entryCount = view.getUint32(offset + 4);
+                    let currentOffset = offset + 8;
+                    
+                    for (let i = 0; i < entryCount && currentOffset < offset + size - 8; i++) {
+                        const entrySize = view.getUint32(currentOffset);
+                        const format = this.readString(view, currentOffset + 4, 4);
+                        
+                        if (format.startsWith('avc')) {
+                            metadata.advanced.videoCodec = 'H.264';
+                        } else if (format.startsWith('hev')) {
+                            metadata.advanced.videoCodec = 'H.265';
+                        } else if (format === 'mp4a') {
+                            metadata.advanced.audioCodec = 'AAC';
+                        }
+                        
+                        if (entrySize === 0) break;
+                        currentOffset += entrySize;
+                    }
+                } catch (error) {
+                    console.warn('MP4 stsd parsing failed:', error);
+                }
+            }
+
+            async parseMP4UUID(view, offset, size, metadata) {
+                try {
+                    // UUID boxes can contain GPS data
+                    const uuid = [];
+                    for (let i = 0; i < 16; i++) {
+                        uuid.push(view.getUint8(offset + i));
+                    }
+                    
+                    // Check for GPS UUID (example)
+                    const gpsUUID = [0x47, 0x50, 0x53, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20];
+                    if (this.arraysEqual(uuid, gpsUUID)) {
+                        await this.parseMP4GPSData(view, offset + 16, size - 16, metadata);
+                    }
+                } catch (error) {
+                    console.warn('MP4 UUID parsing failed:', error);
+                }
+            }
+
+            async parseMP4GPSData(view, offset, size, metadata) {
+                try {
+                    // Parse GPS data from UUID box
+                    if (size >= 24) {
+                        metadata.gps.latitude = view.getFloat64(offset);
+                        metadata.gps.longitude = view.getFloat64(offset + 8);
+                        metadata.gps.altitude = view.getFloat64(offset + 16);
+                        metadata.gps.timestamp = new Date().toISOString();
+                    }
+                } catch (error) {
+                    console.warn('MP4 GPS data parsing failed:', error);
+                }
+            }
+
+            async analyzeAVIStructure(view, metadata) {
+                try {
+                    let offset = 12; // Skip RIFF header and 'AVI ' signature
+                    
+                    while (offset < view.byteLength - 8) {
+                        const chunkType = this.readString(view, offset, 4);
+                        const chunkSize = view.getUint32(offset + 4, true);
+                        
+                        if (chunkType === 'LIST') {
+                            const listType = this.readString(view, offset + 8, 4);
+                            if (listType === 'hdrl') {
+                                await this.parseAVIHdrl(view, offset + 12, chunkSize - 4, metadata);
+                            } else if (listType === 'info') {
+                                await this.parseAVIInfo(view, offset + 12, chunkSize - 4, metadata);
+                            }
+                            offset += 8 + ((chunkSize + 1) & ~1);
+                        } else {
+                            offset += 8 + ((chunkSize + 1) & ~1);
+                        }
+                    }
+                } catch (error) {
+                    console.warn('AVI structure analysis failed:', error);
+                }
+            }
+
+            async parseAVIHdrl(view, offset, size, metadata) {
+                try {
+                    let currentOffset = offset;
+                    
+                    while (currentOffset < offset + size - 8) {
+                        const chunkType = this.readString(view, currentOffset, 4);
+                        const chunkSize = view.getUint32(currentOffset + 4, true);
+                        
+                        if (chunkType === 'avih') {
+                            metadata.advanced.width = view.getUint32(currentOffset + 32, true);
+                            metadata.advanced.height = view.getUint32(currentOffset + 36, true);
+                            metadata.advanced.fps = 1000000 / view.getUint32(currentOffset + 16, true);
+                        } else if (chunkType === 'strl') {
+                            await this.parseAVIStrl(view, currentOffset + 8, chunkSize, metadata);
+                        }
+                        
+                        currentOffset += 8 + ((chunkSize + 1) & ~1);
+                    }
+                } catch (error) {
+                    console.warn('AVI hdrl parsing failed:', error);
+                }
+            }
+
+            async parseAVIStrl(view, offset, size, metadata) {
+                try {
+                    let currentOffset = offset;
+                    
+                    while (currentOffset < offset + size - 8) {
+                        const chunkType = this.readString(view, currentOffset, 4);
+                        const chunkSize = view.getUint32(currentOffset + 4, true);
+                        
+                        if (chunkType === 'strh') {
+                            const handlerType = this.readString(view, currentOffset + 8, 4);
+                            if (handlerType === 'vide') {
+                                metadata.advanced.hasVideo = true;
+                            } else if (handlerType === 'auds') {
+                                metadata.advanced.hasAudio = true;
+                            }
+                        } else if (chunkType === 'strf') {
+                            // Stream format data
+                        }
+                        
+                        currentOffset += 8 + ((chunkSize + 1) & ~1);
+                    }
+                } catch (error) {
+                    console.warn('AVI strl parsing failed:', error);
+                }
+            }
+
+            async parseAVIInfo(view, offset, size, metadata) {
+                try {
+                    let currentOffset = offset;
+                    
+                    while (currentOffset < offset + size - 8) {
+                        const chunkType = this.readString(view, currentOffset, 4);
+                        const chunkSize = view.getUint32(currentOffset + 4, true);
+                        
+                        if (chunkType === 'ISFT') {
+                            const software = this.readString(view, currentOffset + 8, chunkSize);
+                            metadata.advanced.software = software;
+                        } else if (chunkType === 'ICMT') {
+                            const comment = this.readString(view, currentOffset + 8, chunkSize);
+                            metadata.advanced.comment = comment;
+                        }
+                        
+                        currentOffset += 8 + ((chunkSize + 1) & ~1);
+                    }
+                } catch (error) {
+                    console.warn('AVI info parsing failed:', error);
+                }
+            }
+
+            async analyzeMKVStructure(view, metadata) {
+                try {
+                    let offset = 0;
+                    
+                    while (offset < view.byteLength - 4) {
+                        const elementId = this.readMKVElementId(view, offset);
+                        const elementSize = this.readMKVElementSize(view, offset + elementId.length);
+                        
+                        if (elementId.value === 0x1A45DFA3) { // EBML
+                            await this.parseMKVEBML(view, offset + elementId.length + elementSize.length, elementSize.value, metadata);
+                        } else if (elementId.value === 0x18538067) { // Segment
+                            await this.parseMKVSegment(view, offset + elementId.length + elementSize.length, elementSize.value, metadata);
+                        }
+                        
+                        offset += elementId.length + elementSize.length + elementSize.value;
+                    }
+                } catch (error) {
+                    console.warn('MKV structure analysis failed:', error);
+                }
+            }
+
+            readMKVElementId(view, offset) {
+                let value = 0;
+                let length = 0;
+                
+                for (let i = 0; i < 4; i++) {
+                    const byte = view.getUint8(offset + i);
+                    if (byte & 0x80) {
+                        value = (value << (7 * i)) | (byte & 0x7F);
+                        length = i + 1;
+                        break;
+                    }
+                    value = (value << 8) | byte;
+                }
+                
+                return { value, length };
+            }
+
+            readMKVElementSize(view, offset) {
+                let value = 0;
+                let length = 0;
+                
+                for (let i = 0; i < 8; i++) {
+                    const byte = view.getUint8(offset + i);
+                    if (byte & 0x80) {
+                        value = (value << (7 * i)) | (byte & 0x7F);
+                        length = i + 1;
+                        break;
+                    }
+                    value = (value << 8) | byte;
+                }
+                
+                return { value, length };
+            }
+
+            async parseMKVEBML(view, offset, size, metadata) {
+                try {
+                    let currentOffset = offset;
+                    
+                    while (currentOffset < offset + size - 4) {
+                        const elementId = this.readMKVElementId(view, currentOffset);
+                        const elementSize = this.readMKVElementSize(view, currentOffset + elementId.length);
+                        
+                        if (elementId.value === 0x4286) { // EBMLVersion
+                            metadata.advanced.ebmlVersion = elementSize.value;
+                        } else if (elementId.value === 0x42F7) { // EBMLReadVersion
+                            metadata.advanced.ebmlReadVersion = elementSize.value;
+                        }
+                        
+                        currentOffset += elementId.length + elementSize.length + elementSize.value;
+                    }
+                } catch (error) {
+                    console.warn('MKV EBML parsing failed:', error);
+                }
+            }
+
+            async parseMKVSegment(view, offset, size, metadata) {
+                try {
+                    let currentOffset = offset;
+                    
+                    while (currentOffset < offset + size - 4) {
+                        const elementId = this.readMKVElementId(view, currentOffset);
+                        const elementSize = this.readMKVElementSize(view, currentOffset + elementId.length);
+                        
+                        if (elementId.value === 0x1654AE6B) { // Tracks
+                            await this.parseMKVTracks(view, currentOffset + elementId.length + elementSize.length, elementSize.value, metadata);
+                        } else if (elementId.value === 0x1C53BB6B) { // Cues
+                            metadata.advanced.hasCues = true;
+                        }
+                        
+                        currentOffset += elementId.length + elementSize.length + elementSize.value;
+                    }
+                } catch (error) {
+                    console.warn('MKV Segment parsing failed:', error);
+                }
+            }
+
+            async parseMKVTracks(view, offset, size, metadata) {
+                try {
+                    let currentOffset = offset;
+                    metadata.advanced.tracks = [];
+                    
+                    while (currentOffset < offset + size - 4) {
+                        const elementId = this.readMKVElementId(view, currentOffset);
+                        const elementSize = this.readMKVElementSize(view, currentOffset + elementId.length);
+                        
+                        if (elementId.value === 0xAE) { // TrackEntry
+                            const track = await this.parseMKVTrackEntry(view, currentOffset + elementId.length + elementSize.length, elementSize.value);
+                            metadata.advanced.tracks.push(track);
+                        }
+                        
+                        currentOffset += elementId.length + elementSize.length + elementSize.value;
+                    }
+                } catch (error) {
+                    console.warn('MKV Tracks parsing failed:', error);
+                }
+            }
+
+            async parseMKVTrackEntry(view, offset, size) {
+                const track = {};
+                try {
+                    let currentOffset = offset;
+                    
+                    while (currentOffset < offset + size - 4) {
+                        const elementId = this.readMKVElementId(view, currentOffset);
+                        const elementSize = this.readMKVElementSize(view, currentOffset + elementId.length);
+                        
+                        if (elementId.value === 0xD7) { // TrackNumber
+                            track.number = elementSize.value;
+                        } else if (elementId.value === 0x83) { // TrackType
+                            track.type = elementSize.value === 1 ? 'video' : elementSize.value === 2 ? 'audio' : 'other';
+                        } else if (elementId.value === 0x86) { // CodecID
+                            const codecId = this.readString(view, currentOffset + elementId.length + elementSize.length, elementSize.value);
+                            track.codec = codecId;
+                        }
+                        
+                        currentOffset += elementId.length + elementSize.length + elementSize.value;
+                    }
+                } catch (error) {
+                    console.warn('MKV TrackEntry parsing failed:', error);
+                }
+                return track;
+            }
+
+            async extractHiddenVideoData(view, metadata) {
+                try {
+                    // استخراج البيانات المخفية من الفيديو
+                    metadata.hidden.watermarks = this.findVideoWatermarks(view);
+                    metadata.hidden.embedded = this.findVideoEmbeddedData(view);
+                    metadata.hidden.tampering = this.detectVideoTampering(view);
+                } catch (error) {
+                    console.warn('Hidden video data extraction failed:', error);
+                }
+            }
+
+            findVideoWatermarks(view) {
+                const watermarks = [];
+                try {
+                    // بحث عن توقيعات مائية في الفيديو
+                    const videoSignatures = [
+                        { name: 'Nielsen', pattern: [0x4E, 0x69, 0x65, 0x6C] },
+                        { name: 'Verimatrix', pattern: [0x56, 0x65, 0x72, 0x69] }
+                    ];
+                    
+                    for (const sig of videoSignatures) {
+                        if (this.findPattern(view, sig.pattern)) {
+                            watermarks.push(sig.name);
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Video watermark detection failed:', error);
+                }
+                return watermarks;
+            }
+
+            findVideoEmbeddedData(view) {
+                const embedded = [];
+                try {
+                    // البحث عن بيانات مضمنة في الفيديو
+                    const patterns = [
+                        { name: 'Subtitle', pattern: [0x73, 0x75, 0x62, 0x74] },
+                        { name: 'Chapter', pattern: [0x63, 0x68, 0x61, 0x70] },
+                        { name: 'Metadata', pattern: [0x6D, 0x65, 0x74, 0x61] }
+                    ];
+                    
+                    for (const pattern of patterns) {
+                        if (this.findPattern(view, pattern.pattern)) {
+                            embedded.push(pattern.name);
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Video embedded data detection failed:', error);
+                }
+                return embedded;
+            }
+
+            detectVideoTampering(view) {
+                const tampering = [];
+                try {
+                    // كشف التلاعب في الفيديو
+                    if (this.hasInconsistentVideoMetadata(view)) {
+                        tampering.push('ميتاداتا فيديو غير متسقة');
+                    }
+                    
+                    if (this.hasVideoCompressionArtifacts(view)) {
+                        tampering.push('أثر ضغط فيديو غير طبيعي');
+                    }
+                } catch (error) {
+                    console.warn('Video tampering detection failed:', error);
+                }
+                return tampering;
+            }
+
+            hasInconsistentVideoMetadata(view) {
+                return false; // Placeholder
+            }
+
+            hasVideoCompressionArtifacts(view) {
+                return false; // Placeholder
+            }
+
+            extractGPSFromAdvancedVideo(metadata) {
+                if (!metadata.gps || !metadata.gps.latitude || !metadata.gps.longitude) {
+                    return null;
+                }
+
+                return {
+                    latitude: metadata.gps.latitude,
+                    longitude: metadata.gps.longitude,
+                    altitude: metadata.gps.altitude || null,
+                    timestamp: metadata.gps.timestamp || metadata.advanced.creationTime,
+                    speed: metadata.advanced.speed || null,
+                    direction: metadata.advanced.direction || null
+                };
+            }
+
+            displayAdvancedVideoMetadata(metadata) {
+                const fileMetadata = document.getElementById('fileMetadata');
+                const exifMetadata = document.getElementById('exifMetadata');
+
+                // معلومات أساسية
+                let basicHtml = `
+                    <div class="metadata-item">
+                        <span class="metadata-label">نوع الملف:</span>
+                        <span class="metadata-value">فيديو متقدم</span>
+                    </div>
+                `;
+
+                if (metadata.advanced.creationTime) {
+                    basicHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">تاريخ الإنشاء:</span>
+                            <span class="metadata-value">${metadata.advanced.creationTime}</span>
+                        </div>
+                    `;
+                }
+
+                if (metadata.advanced.duration) {
+                    basicHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">المدة:</span>
+                            <span class="metadata-value">${this.formatDuration(metadata.advanced.duration)}</span>
+                        </div>
+                    `;
+                }
+
+                fileMetadata.innerHTML = basicHtml;
+
+                // معلومات متقدمة
+                let advancedHtml = '';
+
+                if (metadata.advanced.width && metadata.advanced.height) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">الدقة:</span>
+                            <span class="metadata-value">${metadata.advanced.width} × ${metadata.advanced.height}</span>
+                        </div>
+                    `;
+                }
+
+                if (metadata.advanced.fps) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">معدل الإطارات:</span>
+                            <span class="metadata-value">${metadata.advanced.fps.toFixed(2)} fps</span>
+                        </div>
+                    `;
+                }
+
+                if (metadata.advanced.videoCodec) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">ترميز الفيديو:</span>
+                            <span class="metadata-value">${metadata.advanced.videoCodec}</span>
+                        </div>
+                    `;
+                }
+
+                if (metadata.advanced.audioCodec) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">ترميز الصوت:</span>
+                            <span class="metadata-value">${metadata.advanced.audioCodec}</span>
+                        </div>
+                    `;
+                }
+
+                if (metadata.advanced.tracks && metadata.advanced.tracks.length > 0) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">عدد المسارات:</span>
+                            <span class="metadata-value">${metadata.advanced.tracks.length}</span>
+                        </div>
+                    `;
+                }
+
+                // البيانات المخفية
+                if (metadata.hidden && (metadata.hidden.watermarks.length > 0 || metadata.hidden.embedded.length > 0)) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">بيانات مخفية:</span>
+                            <span class="metadata-value">
+                                ${metadata.hidden.watermarks.length} توقيع مائي,
+                                ${metadata.hidden.embedded.length} بيانات مضمنة
+                            </span>
+                        </div>
+                    `;
+                }
+
+                // كشف التلاعب
+                if (metadata.hidden && metadata.hidden.tampering.length > 0) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">تحذيرات:</span>
+                            <span class="metadata-value" style="color: #f44336;">
+                                ${metadata.hidden.tampering.join(', ')}
+                            </span>
+                        </div>
+                    `;
+                }
+
+                exifMetadata.innerHTML = advancedHtml || '<p>لا توجد معلومات متقدمة متاحة</p>';
+            }
+
+            formatDuration(seconds) {
+                const hours = Math.floor(seconds / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                const secs = Math.floor(seconds % 60);
+                
+                if (hours > 0) {
+                    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                } else {
+                    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+                }
+            }
+
+            arraysEqual(a, b) {
+                return a.length === b.length && a.every((val, i) => val === b[i]);
+            }
+
+            async analyzePDF(file) {
+                // تحليل ملفات PDF
+                try {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdfMetadata = await this.extractPDFMetadata(arrayBuffer);
+                    
+                    if (pdfMetadata) {
+                        this.displayPDFMetadata(pdfMetadata);
+                        
+                        // محاولة استخراج GPS من PDF
+                        const gpsData = this.extractGPSFromPDF(pdfMetadata);
+                        if (gpsData) {
+                            this.displayGPSData(gpsData);
+                            this.displayMap(gpsData.latitude, gpsData.longitude);
+                        }
+                    }
+                } catch (error) {
+                    console.warn('PDF analysis failed:', error);
+                    this.displayBasicPDFMetadata(file);
+                }
+            }
+
+            async extractPDFMetadata(arrayBuffer) {
+                const metadata = {
+                    basic: {},
+                    advanced: {},
+                    hidden: {},
+                    gps: {}
+                };
+
+                try {
+                    const view = new DataView(arrayBuffer);
+                    
+                    // التحقق من توقيع PDF
+                    if (!this.isPDF(view)) {
+                        throw new Error('Not a valid PDF file');
+                    }
+                    
+                    // استخراج metadata من PDF
+                    await this.parsePDFStructure(view, metadata);
+                    
+                    // استخراج البيانات المخفية
+                    await this.extractHiddenPDFData(view, metadata);
+                    
+                } catch (error) {
+                    console.warn('PDF metadata extraction failed:', error);
+                }
+
+                return metadata;
+            }
+
+            isPDF(view) {
+                // Check PDF signature
+                const header = this.readString(view, 0, 5);
+                return header === '%PDF-';
+            }
+
+            async parsePDFStructure(view, metadata) {
+                try {
+                    const text = new TextDecoder().decode(view.buffer);
+                    
+                    // استخراج الإصدار
+                    const versionMatch = text.match(/%PDF-(\d+\.\d+)/);
+                    if (versionMatch) {
+                        metadata.basic.version = versionMatch[1];
+                    }
+                    
+                    // استخراج metadata
+                    const infoMatch = text.match(/\/Info\s+(\d+)\s+(\d+)\s+R/);
+                    if (infoMatch) {
+                        await this.parsePDFInfoObject(text, parseInt(infoMatch[1]), parseInt(infoMatch[2]), metadata);
+                    }
+                    
+                    // استخراج Root
+                    const rootMatch = text.match(/\/Root\s+(\d+)\s+(\d+)\s+R/);
+                    if (rootMatch) {
+                        metadata.basic.rootObject = `${rootMatch[1]} ${rootMatch[2]} R`;
+                    }
+                    
+                    // استخراج Pages
+                    const pagesMatch = text.match(/\/Pages\s+(\d+)\s+(\d+)\s+R/);
+                    if (pagesMatch) {
+                        metadata.basic.pagesObject = `${pagesMatch[1]} ${pagesMatch[2]} R`;
+                    }
+                    
+                    // عدد الصفحات
+                    const pageCountMatch = text.match(/\/Count\s+(\d+)/);
+                    if (pageCountMatch) {
+                        metadata.basic.pageCount = parseInt(pageCountMatch[1]);
+                    }
+                    
+                    // استخراج JavaScript
+                    const jsMatches = text.match(/\/JS\s*\(/g);
+                    if (jsMatches) {
+                        metadata.hidden.hasJavaScript = true;
+                        metadata.hidden.javaScriptCount = jsMatches.length;
+                    }
+                    
+                    // استخراج Forms
+                    const formMatch = text.match(/\/AcroForm/);
+                    if (formMatch) {
+                        metadata.advanced.hasForms = true;
+                    }
+                    
+                    // استخراج Embedded Files
+                    const embeddedMatch = text.match(/\/EmbeddedFile/);
+                    if (embeddedMatch) {
+                        metadata.advanced.hasEmbeddedFiles = true;
+                    }
+                    
+                } catch (error) {
+                    console.warn('PDF structure parsing failed:', error);
+                }
+            }
+
+            async parsePDFInfoObject(text, objNum, objGen, metadata) {
+                try {
+                    const objPattern = new RegExp(`${objNum} ${objGen} obj[\\s\\S]*?endobj`, 'g');
+                    const objMatch = text.match(objPattern);
+                    
+                    if (objMatch) {
+                        const objContent = objMatch[0];
+                        
+                        // استخراج Title
+                        const titleMatch = objContent.match(/\/Title\s*\(([^)]+)\)/);
+                        if (titleMatch) {
+                            metadata.basic.title = this.unescapePDFString(titleMatch[1]);
+                        }
+                        
+                        // استخراج Author
+                        const authorMatch = objContent.match(/\/Author\s*\(([^)]+)\)/);
+                        if (authorMatch) {
+                            metadata.basic.author = this.unescapePDFString(authorMatch[1]);
+                        }
+                        
+                        // استخراج Subject
+                        const subjectMatch = objContent.match(/\/Subject\s*\(([^)]+)\)/);
+                        if (subjectMatch) {
+                            metadata.basic.subject = this.unescapePDFString(subjectMatch[1]);
+                        }
+                        
+                        // استخراج Keywords
+                        const keywordsMatch = objContent.match(/\/Keywords\s*\(([^)]+)\)/);
+                        if (keywordsMatch) {
+                            metadata.basic.keywords = this.unescapePDFString(keywordsMatch[1]);
+                        }
+                        
+                        // استخراج Creator
+                        const creatorMatch = objContent.match(/\/Creator\s*\(([^)]+)\)/);
+                        if (creatorMatch) {
+                            metadata.basic.creator = this.unescapePDFString(creatorMatch[1]);
+                        }
+                        
+                        // استخراج Producer
+                        const producerMatch = objContent.match(/\/Producer\s*\(([^)]+)\)/);
+                        if (producerMatch) {
+                            metadata.basic.producer = this.unescapePDFString(producerMatch[1]);
+                        }
+                        
+                        // استخراج CreationDate
+                        const creationDateMatch = objContent.match(/\/CreationDate\s*\(([^)]+)\)/);
+                        if (creationDateMatch) {
+                            metadata.basic.creationDate = this.parsePDFDate(creationDateMatch[1]);
+                        }
+                        
+                        // استخراج ModDate
+                        const modDateMatch = objContent.match(/\/ModDate\s*\(([^)]+)\)/);
+                        if (modDateMatch) {
+                            metadata.basic.modDate = this.parsePDFDate(modDateMatch[1]);
+                        }
+                        
+                        // استخراج GPS
+                        const gpsMatch = objContent.match(/\/GPS\s*\(([^)]+)\)/);
+                        if (gpsMatch) {
+                            const gpsData = this.parsePDFGPS(gpsMatch[1]);
+                            if (gpsData) {
+                                metadata.gps = { ...metadata.gps, ...gpsData };
+                            }
+                        }
+                    }
+                    
+                } catch (error) {
+                    console.warn('PDF Info object parsing failed:', error);
+                }
+            }
+
+            unescapePDFString(str) {
+                try {
+                    // Convert PDF escape sequences
+                    return str
+                        .replace(/\\n/g, '\n')
+                        .replace(/\\r/g, '\r')
+                        .replace(/\\t/g, '\t')
+                        .replace(/\\b/g, '\b')
+                        .replace(/\\f/g, '\f')
+                        .replace(/\\\(/g, '(')
+                        .replace(/\\\)/g, ')')
+                        .replace(/\\\\/g, '\\')
+                        .replace(/\\(\d{3})/g, (match, octal) => 
+                            String.fromCharCode(parseInt(octal, 8))
+                        );
+                } catch (error) {
+                    return str;
+                }
+            }
+
+            parsePDFDate(dateStr) {
+                try {
+                    // PDF date format: D:YYYYMMDDHHmmSSOHH'mm'
+                    const match = dateStr.match(/D:(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})([Z+-])(\d{2})'(\d{2})?/);
+                    
+                    if (match) {
+                        const year = parseInt(match[1]);
+                        const month = parseInt(match[2]) - 1;
+                        const day = parseInt(match[3]);
+                        const hour = parseInt(match[4]);
+                        const minute = parseInt(match[5]);
+                        const second = parseInt(match[6]);
+                        
+                        return new Date(year, month, day, hour, minute, second).toISOString();
+                    }
+                    
+                    return dateStr;
+                } catch (error) {
+                    return dateStr;
+                }
+            }
+
+            parsePDFGPS(gpsStr) {
+                try {
+                    // Parse GPS coordinates from PDF string
+                    const coords = gpsStr.split(',').map(coord => parseFloat(coord.trim()));
+                    
+                    if (coords.length >= 2) {
+                        return {
+                            latitude: coords[0],
+                            longitude: coords[1],
+                            altitude: coords[2] || null
+                        };
+                    }
+                    
+                    return null;
+                } catch (error) {
+                    return null;
+                }
+            }
+
+            async extractHiddenPDFData(view, metadata) {
+                try {
+                    const text = new TextDecoder().decode(view.buffer);
+                    
+                    // البحث عن طبقات مخفية
+                    const ocPropertiesMatch = text.match(/\/OCProperties/);
+                    if (ocPropertiesMatch) {
+                        metadata.hidden.hasLayers = true;
+                    }
+                    
+                    // البحث عن روابط مخفية
+                    const linkMatches = text.match(/\/A\s*<</g);
+                    if (linkMatches) {
+                        metadata.hidden.hiddenLinks = linkMatches.length;
+                    }
+                    
+                    // البحث عن صور مخفية
+                    const imageMatches = text.match(/\/Subtype\s*\/Image/g);
+                    if (imageMatches) {
+                        metadata.hidden.hiddenImages = imageMatches.length;
+                    }
+                    
+                    // البحث عن نصوص مخفية
+                    const hiddenTextMatches = text.match(/\/OC\s*\//g);
+                    if (hiddenTextMatches) {
+                        metadata.hidden.hiddenText = hiddenTextMatches.length;
+                    }
+                    
+                    // البحث عن ملفات مضمنة
+                    const fileAttachmentMatches = text.match(/\/FileAttachment/g);
+                    if (fileAttachmentMatches) {
+                        metadata.hidden.embeddedFiles = fileAttachmentMatches.length;
+                    }
+                    
+                    // البحث عن حقول نماذج
+                    const formFieldMatches = text.match(/\/FT\s*\//g);
+                    if (formFieldMatches) {
+                        metadata.hidden.formFields = formFieldMatches.length;
+                    }
+                    
+                } catch (error) {
+                    console.warn('Hidden PDF data extraction failed:', error);
+                }
+            }
+
+            extractGPSFromPDF(metadata) {
+                if (!metadata.gps || !metadata.gps.latitude || !metadata.gps.longitude) {
+                    return null;
+                }
+
+                return {
+                    latitude: metadata.gps.latitude,
+                    longitude: metadata.gps.longitude,
+                    altitude: metadata.gps.altitude || null,
+                    timestamp: metadata.basic.creationDate || new Date().toISOString()
+                };
+            }
+
+            displayPDFMetadata(metadata) {
+                const fileMetadata = document.getElementById('fileMetadata');
+                const exifMetadata = document.getElementById('exifMetadata');
+
+                // معلومات أساسية
+                let basicHtml = `
+                    <div class="metadata-item">
+                        <span class="metadata-label">نوع الملف:</span>
+                        <span class="metadata-value">PDF</span>
+                    </div>
+                `;
+
+                if (metadata.basic.version) {
+                    basicHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">إصدار PDF:</span>
+                            <span class="metadata-value">${metadata.basic.version}</span>
+                        </div>
+                    `;
+                }
+
+                if (metadata.basic.pageCount) {
+                    basicHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">عدد الصفحات:</span>
+                            <span class="metadata-value">${metadata.basic.pageCount}</span>
+                        </div>
+                    `;
+                }
+
+                if (metadata.basic.creationDate) {
+                    basicHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">تاريخ الإنشاء:</span>
+                            <span class="metadata-value">${metadata.basic.creationDate}</span>
+                        </div>
+                    `;
+                }
+
+                fileMetadata.innerHTML = basicHtml;
+
+                // معلومات متقدمة
+                let advancedHtml = '';
+
+                if (metadata.basic.title) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">العنوان:</span>
+                            <span class="metadata-value">${metadata.basic.title}</span>
+                        </div>
+                    `;
+                }
+
+                if (metadata.basic.author) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">المؤلف:</span>
+                            <span class="metadata-value">${metadata.basic.author}</span>
+                        </div>
+                    `;
+                }
+
+                if (metadata.basic.subject) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">الموضوع:</span>
+                            <span class="metadata-value">${metadata.basic.subject}</span>
+                        </div>
+                    `;
+                }
+
+                if (metadata.basic.keywords) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">الكلمات المفتاحية:</span>
+                            <span class="metadata-value">${metadata.basic.keywords}</span>
+                        </div>
+                    `;
+                }
+
+                if (metadata.basic.creator) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">المنشئ:</span>
+                            <span class="metadata-value">${metadata.basic.creator}</span>
+                        </div>
+                    `;
+                }
+
+                if (metadata.basic.producer) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">المُنتج:</span>
+                            <span class="metadata-value">${metadata.basic.producer}</span>
+                        </div>
+                    `;
+                }
+
+                // المميزات المتقدمة
+                if (metadata.advanced.hasForms) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">يحتوي على نماذج:</span>
+                            <span class="metadata-value">نعم</span>
+                        </div>
+                    `;
+                }
+
+                if (metadata.advanced.hasEmbeddedFiles) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">يحتوي على ملفات مضمنة:</span>
+                            <span class="metadata-value">نعم</span>
+                        </div>
+                    `;
+                }
+
+                // البيانات المخفية
+                if (metadata.hidden.hasJavaScript) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">يحتوي على JavaScript:</span>
+                            <span class="metadata-value">نعم (${metadata.hidden.javaScriptCount} دالة)</span>
+                        </div>
+                    `;
+                }
+
+                if (metadata.hidden.hasLayers) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">يحتوي على طبقات مخفية:</span>
+                            <span class="metadata-value">نعم</span>
+                        </div>
+                    `;
+                }
+
+                if (metadata.hidden.hiddenLinks > 0) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">روابط مخفية:</span>
+                            <span class="metadata-value">${metadata.hidden.hiddenLinks}</span>
+                        </div>
+                    `;
+                }
+
+                if (metadata.hidden.hiddenImages > 0) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">صور مخفية:</span>
+                            <span class="metadata-value">${metadata.hidden.hiddenImages}</span>
+                        </div>
+                    `;
+                }
+
+                if (metadata.hidden.embeddedFiles > 0) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">ملفات مضمنة:</span>
+                            <span class="metadata-value">${metadata.hidden.embeddedFiles}</span>
+                        </div>
+                    `;
+                }
+
+                if (metadata.hidden.formFields > 0) {
+                    advancedHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">حقول نماذج:</span>
+                            <span class="metadata-value">${metadata.hidden.formFields}</span>
+                        </div>
+                    `;
+                }
+
+                exifMetadata.innerHTML = advancedHtml || '<p>لا توجد معلومات متقدمة متاحة</p>';
+            }
+
+            displayBasicPDFMetadata(file) {
+                const fileMetadata = document.getElementById('fileMetadata');
+                const exifMetadata = document.getElementById('exifMetadata');
+
+                fileMetadata.innerHTML = `
+                    <div class="metadata-item">
+                        <span class="metadata-label">النوع:</span>
+                        <span class="metadata-value">PDF</span>
+                    </div>
+                    <div class="metadata-item">
+                        <span class="metadata-label">الحجم:</span>
+                        <span class="metadata-value">${this.formatFileSize(file.size)}</span>
+                    </div>
+                `;
+
+                exifMetadata.innerHTML = '<p>لا توجد معلومات متاحة</p>';
+            }
+
+            extractGPSFromEXIF(exifData) {
+                if (!exifData.GPSLatitude || !exifData.GPSLongitude) {
+                    return null;
+                }
+
+                // تحويل من DMS إلى decimal
+                const lat = this.convertDMSToDecimal(
+                    exifData.GPSLatitude,
+                    exifData.GPSLatitudeRef
+                );
+                const lon = this.convertDMSToDecimal(
+                    exifData.GPSLongitude,
+                    exifData.GPSLongitudeRef
+                );
+
+                return {
+                    latitude: lat,
+                    longitude: lon,
+                    altitude: exifData.GPSAltitude || null,
+                    timestamp: exifData.GPSDateStamp || null
+                };
+            }
+
+            extractGPSFromVideo(tags) {
+                // محاولة استخراج GPS من metadata الفيديو
+                // بعض الكاميرات تحفظ GPS في حقول خاصة
+                const location = tags.location;
+                if (location && location.latitude && location.longitude) {
+                    return {
+                        latitude: location.latitude,
+                        longitude: location.longitude,
+                        altitude: location.altitude || null
+                    };
+                }
+
+                // محاولة البحث في حقول مخصصة
+                for (let key in tags) {
+                    if (key.toLowerCase().includes('gps') || key.toLowerCase().includes('location')) {
+                        const value = tags[key];
+                        if (typeof value === 'string' && value.includes(',')) {
+                            const parts = value.split(',');
+                            if (parts.length >= 2) {
+                                const lat = parseFloat(parts[0].trim());
+                                const lon = parseFloat(parts[1].trim());
+                                if (!isNaN(lat) && !isNaN(lon)) {
+                                    return { latitude: lat, longitude: lon };
+                                }
+                            }
+                        }
+                    }
+                }
+
+                return null;
+            }
+
+            convertDMSToDecimal(dms, ref) {
+                // تحويل من Degrees Minutes Seconds إلى decimal
+                let decimal = dms[0] + dms[1]/60 + dms[2]/3600;
+                if (ref === 'S' || ref === 'W') {
+                    decimal = -decimal;
+                }
+                return decimal;
+            }
+
+            displayImageMetadata(exifData) {
+                const fileMetadata = document.getElementById('fileMetadata');
+                const exifMetadata = document.getElementById('exifMetadata');
+
+                // معلومات الملف الأساسية
+                fileMetadata.innerHTML = `
+                    <div class="metadata-item">
+                        <span class="metadata-label">النوع:</span>
+                        <span class="metadata-value">صورة</span>
+                    </div>
+                    <div class="metadata-item">
+                        <span class="metadata-label">التاريخ:</span>
+                        <span class="metadata-value">${exifData.DateTime || 'غير متاح'}</span>
+                    </div>
+                `;
+
+                // معلومات EXIF
+                let exifHtml = '';
+                
+                if (exifData.Make || exifData.Model) {
+                    exifHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">الجهاز:</span>
+                            <span class="metadata-value">${exifData.Make || ''} ${exifData.Model || ''}</span>
+                        </div>
+                    `;
+                }
+
+                if (exifData.DateTime) {
+                    exifHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">تاريخ التصوير:</span>
+                            <span class="metadata-value">${exifData.DateTime}</span>
+                        </div>
+                    `;
+                }
+
+                if (exifData.ImageWidth && exifData.ImageHeight) {
+                    exifHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">الدقة:</span>
+                            <span class="metadata-value">${exifData.ImageWidth} × ${exifData.ImageHeight}</span>
+                        </div>
+                    `;
+                }
+
+                if (exifData.FNumber) {
+                    exifHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">فتحة العدسة:</span>
+                            <span class="metadata-value">f/${exifData.FNumber}</span>
+                        </div>
+                    `;
+                }
+
+                if (exifData.ExposureTime) {
+                    exifHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">سرعة الغالق:</span>
+                            <span class="metadata-value">${exifData.ExposureTime} ثانية</span>
+                        </div>
+                    `;
+                }
+
+                if (exifData.ISOSpeedRatings) {
+                    exifHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">ISO:</span>
+                            <span class="metadata-value">${exifData.ISOSpeedRatings}</span>
+                        </div>
+                    `;
+                }
+
+                if (exifData.FocalLength) {
+                    exifHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">البعد البؤري:</span>
+                            <span class="metadata-value">${exifData.FocalLength} ملم</span>
+                        </div>
+                    `;
+                }
+
+                if (exifData.Flash) {
+                    exifHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">الفلاش:</span>
+                            <span class="metadata-value">${exifData.Flash ? 'مستخدم' : 'غير مستخدم'}</span>
+                        </div>
+                    `;
+                }
+
+                exifMetadata.innerHTML = exifHtml || '<p>لا توجد معلومات EXIF متاحة</p>';
+            }
+
+            displayVideoMetadata(tags) {
+                const fileMetadata = document.getElementById('fileMetadata');
+                const exifMetadata = document.getElementById('exifMetadata');
+
+                // معلومات الملف الأساسية
+                fileMetadata.innerHTML = `
+                    <div class="metadata-item">
+                        <span class="metadata-label">النوع:</span>
+                        <span class="metadata-value">فيديو</span>
+                    </div>
+                    <div class="metadata-item">
+                        <span class="metadata-label">العنوان:</span>
+                        <span class="metadata-value">${tags.title || 'غير متاح'}</span>
+                    </div>
+                    <div class="metadata-item">
+                        <span class="metadata-label">الفنان:</span>
+                        <span class="metadata-value">${tags.artist || 'غير متاح'}</span>
+                    </div>
+                `;
+
+                // معلومات الفيديو
+                let videoHtml = '';
+                
+                if (tags.album) {
+                    videoHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">الألبوم:</span>
+                            <span class="metadata-value">${tags.album}</span>
+                        </div>
+                    `;
+                }
+
+                if (tags.year) {
+                    videoHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">السنة:</span>
+                            <span class="metadata-value">${tags.year}</span>
+                        </div>
+                    `;
+                }
+
+                if (tags.genre) {
+                    videoHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">النوع:</span>
+                            <span class="metadata-value">${tags.genre}</span>
+                        </div>
+                    `;
+                }
+
+                if (tags.track) {
+                    videoHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">المسار:</span>
+                            <span class="metadata-value">${tags.track}</span>
+                        </div>
+                    `;
+                }
+
+                // عرض جميع الحقول المتاحة
+                for (let key in tags) {
+                    if (!['title', 'artist', 'album', 'year', 'genre', 'track'].includes(key)) {
+                        const value = tags[key];
+                        if (value && typeof value === 'string' || typeof value === 'number') {
+                            videoHtml += `
+                                <div class="metadata-item">
+                                    <span class="metadata-label">${key}:</span>
+                                    <span class="metadata-value">${value}</span>
+                                </div>
+                            `;
+                        }
+                    }
+                }
+
+                exifMetadata.innerHTML = videoHtml || '<p>لا توجد معلومات متاحة</p>';
+            }
+
+            displayBasicVideoMetadata(file) {
+                const fileMetadata = document.getElementById('fileMetadata');
+                const exifMetadata = document.getElementById('exifMetadata');
+
+                fileMetadata.innerHTML = `
+                    <div class="metadata-item">
+                        <span class="metadata-label">النوع:</span>
+                        <span class="metadata-value">فيديو</span>
+                    </div>
+                    <div class="metadata-item">
+                        <span class="metadata-label">الحجم:</span>
+                        <span class="metadata-value">${this.formatFileSize(file.size)}</span>
+                    </div>
+                `;
+
+                exifMetadata.innerHTML = '<p>لا توجد معلومات متاحة</p>';
+            }
+
+            displayGPSData(gpsData) {
+                const gpsCard = document.getElementById('gpsCard');
+                const gpsMetadata = document.getElementById('gpsMetadata');
+                const coordinates = document.getElementById('coordinates');
+
+                gpsCard.style.display = 'block';
+                
+                let gpsHtml = '';
+                
+                gpsHtml += `
+                    <div class="metadata-item">
+                        <span class="metadata-label">خط العرض:</span>
+                        <span class="metadata-value">${gpsData.latitude.toFixed(6)}°</span>
+                    </div>
+                    <div class="metadata-item">
+                        <span class="metadata-label">خط الطول:</span>
+                        <span class="metadata-value">${gpsData.longitude.toFixed(6)}°</span>
+                    </div>
+                `;
+
+                if (gpsData.altitude) {
+                    gpsHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">الارتفاع:</span>
+                            <span class="metadata-value">${gpsData.altitude} متر</span>
+                        </div>
+                    `;
+                }
+
+                if (gpsData.timestamp) {
+                    gpsHtml += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">الطابع الزمني:</span>
+                            <span class="metadata-value">${gpsData.timestamp}</span>
+                        </div>
+                    `;
+                }
+
+                gpsMetadata.innerHTML = gpsHtml;
+                coordinates.innerHTML = `${gpsData.latitude.toFixed(6)}, ${gpsData.longitude.toFixed(6)}`;
+            }
+
+            displayMap(latitude, longitude) {
+                const mapContainer = document.getElementById('sideMapContainer');
+                const mapPlaceholder = document.getElementById('sideMapPlaceholder');
+                
+                // إخفاء النص المبدئي وتجهيز الحاوية
+                if (mapPlaceholder) mapPlaceholder.style.display = 'none';
+                mapContainer.style.background = '#fff';
+
+                // تنظيف الخريطة القديمة إذا كانت موجودة
+                if (this.currentMap) {
+                    this.currentMap.remove();
+                }
+
+                // إنشاء الخريطة
+                this.currentMap = L.map('sideMapContainer').setView([latitude, longitude], 15);
+
+                // إضافة طبقات الخرائط
+                const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                });
+
+                const googleStreets = L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',{
+                    maxZoom: 20,
+                    subdomains:['mt0','mt1','mt2','mt3'],
+                    attribution: 'Map data ©2023 Google'
+                });
+
+                const googleHybrid = L.tileLayer('http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',{
+                    maxZoom: 20,
+                    subdomains:['mt0','mt1','mt2','mt3'],
+                    attribution: 'Imagery ©2023 TerraMetrics, Map data ©2023 Google'
+                });
+
+                const googleSat = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{
+                    maxZoom: 20,
+                    subdomains:['mt0','mt1','mt2','mt3'],
+                    attribution: 'Imagery ©2023 TerraMetrics'
+                });
+
+                // الطبقة الافتراضية
+                googleHybrid.addTo(this.currentMap);
+
+                // إضافة أداة التحكم في الطبقات
+                const baseLayers = {
+                    "OpenStreetMap": osmLayer,
+                    "Google Streets": googleStreets,
+                    "Google Hybrid": googleHybrid,
+                    "Google Satellite": googleSat
+                };
+
+                L.control.layers(baseLayers).addTo(this.currentMap);
+
+                // إضافة علامة
+                this.currentMarker = L.marker([latitude, longitude])
+                    .addTo(this.currentMap)
+                    .bindPopup(`
+                        <div style="text-align: center;">
+                            <strong>موقع التقاط</strong><br>
+                            خط العرض: ${latitude.toFixed(6)}°<br>
+                            خط الطول: ${longitude.toFixed(6)}°
+                        </div>
+                    `)
+                    .openPopup();
+            }
+
+            displayVideoPreview(file) {
+                const videoPreviewContainer = document.getElementById('videoPreviewContainer');
+                const videoPreview = document.getElementById('videoPreview');
+
+                videoPreviewContainer.style.display = 'block';
+                
+                const url = URL.createObjectURL(file);
+                videoPreview.src = url;
+            }
+
+            showLoading(show) {
+                document.getElementById('loading').style.display = show ? 'block' : 'none';
+            }
+
+            showError(message) {
+                const errorElement = document.getElementById('errorMessage');
+                errorElement.textContent = message;
+                errorElement.style.display = 'block';
+            }
+
+            hideError() {
+                document.getElementById('errorMessage').style.display = 'none';
+            }
+
+            // --- دوال الذكاء الاصطناعي ---
+            async loadAIModel() {
+                if (this.aiModel) return; // تم تحميله مسبقًا
+                try {
+                    this.aiModel = await cocoSsd.load();
+                } catch (error) {
+                    console.error("Failed to load AI model:", error);
+                    this.showError('فشل تحميل نموذج الذكاء الاصطناعي. قد تكون هناك مشكلة في الاتصال بالإنترنت.');
+                }
+            }
+
+            async analyzeImageWithAI(file) {
+                const aiCard = document.getElementById('aiCard');
+                const aiMetadata = document.getElementById('aiMetadata');
+                aiCard.style.display = 'block';
+                aiMetadata.innerHTML = '<p>جاري تحليل محتوى الصورة...</p>';
+
+                await this.loadAIModel();
+                if (!this.aiModel) return; // فشل تحميل النموذج
+
+                try {
+                    const img = await this.createImageFromFile(file);
+                    const predictions = await this.aiModel.detect(img);
+                    URL.revokeObjectURL(img.src); // تحرير الذاكرة
+
+                    this.displayAIResults(predictions);
+                } catch (error) {
+                    console.error('AI analysis failed:', error);
+                    aiMetadata.innerHTML = '<p>حدث خطأ أثناء تحليل الصورة.</p>';
+                }
+            }
+
+            createImageFromFile(file) {
+                return new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = () => resolve(img);
+                    img.onerror = reject;
+                    img.src = URL.createObjectURL(file);
+                });
+            }
+
+            displayAIResults(predictions) {
+                const aiMetadata = document.getElementById('aiMetadata');
+
+                if (!predictions || predictions.length === 0) {
+                    aiMetadata.innerHTML = '<p>لم يتم التعرف على أي عناصر مميزة.</p>';
+                    return;
+                }
+
+                // تجميع النتائج حسب النوع
+                const groupedPredictions = predictions.reduce((acc, p) => {
+                    acc[p.class] = (acc[p.class] || 0) + 1;
+                    return acc;
+                }, {});
+
+                let html = '';
+                for (const [object, count] of Object.entries(groupedPredictions)) {
+                    html += `
+                        <div class="metadata-item">
+                            <span class="metadata-label">${object}</span>
+                            <span class="metadata-value">${count > 1 ? `(x${count})` : ''}</span>
+                        </div>
+                    `;
+                }
+
+                aiMetadata.innerHTML = html;
+            }
+            // --------------------------------
+
+            showResults() {
+                document.getElementById('results').style.display = 'block';
+            }
+
+            clearAnalysis() {
+                // إعادة تعيين جميع الحقول
+                this.currentFile = null;
+                
+                // إخفاء النتائج
+                document.getElementById('results').style.display = 'none';
+                document.getElementById('clearBtn').style.display = 'none';
+                
+                // تنظيف الخريطة وإعادة الحالة الافتراضية
+                if (this.currentMap) {
+                    this.currentMap.remove();
+                    this.currentMap = null;
+                    this.currentMarker = null;
+                }
+                const mapContainer = document.getElementById('sideMapContainer');
+                const mapPlaceholder = document.getElementById('sideMapPlaceholder');
+                if (mapPlaceholder) mapPlaceholder.style.display = 'block';
+                if(mapContainer) mapContainer.style.background = '#f8f9ff';
+
+                // تنظيف معاينة الفيديو
+                const videoPreview = document.getElementById('videoPreview');
+                if (videoPreview.src) {
+                    URL.revokeObjectURL(videoPreview.src);
+                    videoPreview.src = '';
+                }
+
+                // إعادة تعيين حقول الإدخال
+                document.getElementById('fileInput').value = '';
+                
+                // إخفاء رسائل الخطأ
+                this.hideError();
+
+                // إخفاء بطاقات النتائج الإضافية
+                document.getElementById('aiCard').style.display = 'none';
+            }
+
+            // وظائف التصدير
+            exportData() {
+                if (!this.currentMetadata) {
+                    this.showError('لا توجد بيانات للتصدير');
+                    return;
+                }
+
+                const exportMenu = document.createElement('div');
+                exportMenu.innerHTML = `
+                    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+                                background: white; padding: 20px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); 
+                                z-index: 1000; text-align: center; min-width: 300px;">
+                        <h3>اختر صيغة التصدير</h3>
+                        <div style="margin: 20px 0;">
+                            <button class="btn" onclick="this.parentElement.parentElement.parentElement.remove(); analyzer.exportToJSON();">JSON</button>
+                            <button class="btn" onclick="this.parentElement.parentElement.parentElement.remove(); analyzer.exportToCSV();">CSV</button>
+                            <button class="btn" onclick="this.parentElement.parentElement.parentElement.remove(); analyzer.exportToKML();">KML (للخريطة)</button>
+                            <button class="btn" onclick="this.parentElement.parentElement.parentElement.remove(); analyzer.exportToTXT();">نص عادي</button>
+                        </div>
+                        <button class="btn" onclick="this.parentElement.parentElement.remove();" style="background: #f44336;">إلغاء</button>
+                    </div>
+                `;
+                document.body.appendChild(exportMenu);
+            }
+
+            exportToJSON() {
+                const data = {
+                    file: {
+                        name: this.currentFile.name,
+                        size: this.currentFile.size,
+                        type: this.currentFile.type,
+                        lastModified: new Date(this.currentFile.lastModified).toISOString()
+                    },
+                    metadata: this.currentMetadata,
+                    extractedAt: new Date().toISOString()
+                };
+
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `metadata_${this.currentFile.name.split('.')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            exportToCSV() {
+                let csv = 'Field,Value\n';
+                
+                // Add file info
+                csv += `File Name,${this.currentFile.name}\n`;
+                csv += `File Size,${this.formatFileSize(this.currentFile.size)}\n`;
+                csv += `File Type,${this.currentFile.type}\n`;
+                csv += `Extraction Date,${new Date().toISOString()}\n\n`;
+
+                // Add metadata
+                if (this.currentMetadata.basic) {
+                    csv += 'Basic Metadata\n';
+                    for (const [key, value] of Object.entries(this.currentMetadata.basic)) {
+                        if (value !== null && value !== undefined) {
+                            csv += `${key},"${value}"\n`;
+                        }
+                    }
+                }
+
+                if (this.currentMetadata.gps && this.currentMetadata.gps.latitude && this.currentMetadata.gps.longitude) {
+                    csv += '\nGPS Data\n';
+                    csv += `Latitude,${this.currentMetadata.gps.latitude}\n`;
+                    csv += `Longitude,${this.currentMetadata.gps.longitude}\n`;
+                    if (this.currentMetadata.gps.altitude) {
+                        csv += `Altitude,${this.currentMetadata.gps.altitude}\n`;
+                    }
+                }
+
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `metadata_${this.currentFile.name.split('.')[0]}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            exportToKML() {
+                if (!this.currentMetadata.gps || !this.currentMetadata.gps.latitude || !this.currentMetadata.gps.longitude) {
+                    this.showError('لا توجد بيانات GPS للتصدير إلى KML');
+                    return;
+                }
+
+                let kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Location Data - ${this.currentFile.name}</name>
+    <description>Extracted from ${this.currentFile.name}</description>
+    <Placemark>
+      <name>${this.currentFile.name}</name>
+      <description>`;
+
+                // Add metadata to description
+                if (this.currentMetadata.basic) {
+                    for (const [key, value] of Object.entries(this.currentMetadata.basic)) {
+                        if (value !== null && value !== undefined) {
+                            kml += `${key}: ${value}\n`;
+                        }
+                    }
+                }
+
+                kml += `</description>
+      <Point>
+        <coordinates>${this.currentMetadata.gps.longitude},${this.currentMetadata.gps.latitude}`;
+
+                if (this.currentMetadata.gps.altitude) {
+                    kml += `,${this.currentMetadata.gps.altitude}`;
+                }
+
+                kml += `</coordinates>
+      </Point>
+    </Placemark>`;
+
+                // Add track if available
+                if (this.currentMetadata.gps.track && this.currentMetadata.gps.track.length > 1) {
+                    kml += `
+    <Placemark>
+      <name>Track</name>
+      <LineString>
+        <coordinates>`;
+
+                    for (const point of this.currentMetadata.gps.track) {
+                        kml += `${point.lon},${point.lat}`;
+                        if (point.altitude) kml += `,${point.altitude}`;
+                        kml += ' ';
+                    }
+
+                    kml += `</coordinates>
+      </LineString>
+    </Placemark>`;
+                }
+
+                kml += `
+  </Document>
+</kml>`;
+
+                const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `location_${this.currentFile.name.split('.')[0]}.kml`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            exportToTXT() {
+                let txt = `تحليل البيانات المخفية - ملف: ${this.currentFile.name}\n`;
+                txt += `التاريخ: ${new Date().toLocaleString('ar-SA')}\n`;
+                txt += `الحجم: ${this.formatFileSize(this.currentFile.size)}\n`;
+                txt += `النوع: ${this.currentFile.type}\n\n`;
+
+                if (this.currentMetadata.basic) {
+                    txt += 'المعلومات الأساسية:\n';
+                    for (const [key, value] of Object.entries(this.currentMetadata.basic)) {
+                        if (value !== null && value !== undefined) {
+                            txt += `${key}: ${value}\n`;
+                        }
+                    }
+                    txt += '\n';
+                }
+
+                if (this.currentMetadata.advanced) {
+                    txt += 'المعلومات المتقدمة:\n';
+                    for (const [key, value] of Object.entries(this.currentMetadata.advanced)) {
+                        if (value !== null && value !== undefined) {
+                            txt += `${key}: ${value}\n`;
+                        }
+                    }
+                    txt += '\n';
+                }
+
+                if (this.currentMetadata.gps && this.currentMetadata.gps.latitude && this.currentMetadata.gps.longitude) {
+                    txt += 'معلومات GPS:\n';
+                    txt += `خط العرض: ${this.currentMetadata.gps.latitude}\n`;
+                    txt += `خط الطول: ${this.currentMetadata.gps.longitude}\n`;
+                    if (this.currentMetadata.gps.altitude) {
+                        txt += `الارتفاع: ${this.currentMetadata.gps.altitude}\n`;
+                    }
+                    if (this.currentMetadata.gps.timestamp) {
+                        txt += `الطابع الزمني: ${this.currentMetadata.gps.timestamp}\n`;
+                    }
+                    txt += '\n';
+                }
+
+                if (this.currentMetadata.hidden) {
+                    txt += 'البيانات المخفية:\n';
+                    for (const [key, value] of Object.entries(this.currentMetadata.hidden)) {
+                        if (Array.isArray(value)) {
+                            if (value.length > 0) {
+                                txt += `${key}: ${value.join(', ')}\n`;
+                            }
+                        } else if (value !== null && value !== undefined && value !== false) {
+                            txt += `${key}: ${value}\n`;
+                        }
+                    }
+                }
+
+                const blob = new Blob([txt], { type: 'text/plain;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `analysis_${this.currentFile.name.split('.')[0]}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            // وظائف المعالجة المتعددة
+            showBatchDialog() {
+                const batchDialog = document.createElement('div');
+                batchDialog.innerHTML = `
+                    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                                background: rgba(0,0,0,0.5); z-index: 1000; display: flex; 
+                                align-items: center; justify-content: center;">
+                        <div style="background: white; padding: 30px; border-radius: 15px; 
+                                    box-shadow: 0 10px 30px rgba(0,0,0,0.3); text-align: center; 
+                                    max-width: 500px; width: 90%;">
+                            <h3>معالجة ملفات متعددة</h3>
+                            <p style="margin: 20px 0; color: #666;">
+                                اختر ملفات متعددة لتحليلها دفعة واحدة
+                            </p>
+                            <input type="file" id="batchFileInput" multiple 
+                                   accept=".jpg,.jpeg,.png,.webp,.tiff,.bmp,.gif,.heic,.mp4,.mov,.avi,.3gp,.mkv,.flv,.wmv,.webm,.pdf"
+                                   style="margin: 20px 0; padding: 10px; border: 2px dashed #667eea; 
+                                          border-radius: 10px; width: 100%;">
+                            <div style="margin: 20px 0;">
+                                <button class="btn" onclick="this.parentElement.parentElement.parentElement.parentElement.remove(); analyzer.startBatchProcessing();">بدء التحليل</button>
+                                <button class="btn" onclick="this.parentElement.parentElement.parentElement.parentElement.remove();" style="background: #f44336;">إلغاء</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(batchDialog);
+                
+                // Store reference for later use
+                this.batchDialog = batchDialog;
+            }
+
+            async startBatchProcessing() {
+                const batchFileInput = document.getElementById('batchFileInput');
+                const files = Array.from(batchFileInput.files);
+                
+                if (files.length === 0) {
+                    this.showError('لم يتم اختيار أي ملفات');
+                    return;
+                }
+
+                if (files.length > 20) {
+                    this.showError('الحد الأقصى هو 20 ملف في المرة الواحدة');
+                    return;
+                }
+
+                this.showLoading(true);
+                this.batchFiles = files;
+                this.batchResults = [];
+
+                // Create batch results container
+                const batchResults = document.createElement('div');
+                batchResults.id = 'batchResults';
+                batchResults.innerHTML = `
+                    <div style="background: white; margin: 20px 0; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+                        <h3>نتائج المعالجة المتعددة (${files.length} ملف)</h3>
+                        <div id="batchResultsContent"></div>
+                        <div style="margin-top: 20px;">
+                            <button class="btn" onclick="analyzer.exportBatchResults();">تصدير الكل</button>
+                            <button class="btn" onclick="analyzer.exportBatchGPS();">تصدير GPS</button>
+                            <button class="btn" onclick="this.parentElement.parentElement.remove();" style="background: #f44336;">إغلاق</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.querySelector('.container').appendChild(batchResults);
+
+                try {
+                    for (let i = 0; i < files.length; i++) {
+                        const file = files[i];
+                        
+                        // Update progress
+                        const progress = document.createElement('div');
+                        progress.innerHTML = `
+                            <div style="margin: 10px 0; padding: 10px; background: #f8f9ff; border-radius: 5px;">
+                                <strong>جاري تحليل: ${file.name}</strong> (${i + 1}/${files.length})
+                                <div class="spinner" style="display: inline-block; margin-right: 10px;"></div>
+                            </div>
+                        `;
+                        
+                        document.getElementById('batchResultsContent').appendChild(progress);
+
+                        try {
+                            const result = await this.analyzeFileForBatch(file);
+                            this.batchResults.push(result);
+                            
+                            // Update progress to success
+                            progress.innerHTML = `
+                                <div style="margin: 10px 0; padding: 10px; background: #e8f5e8; border-radius: 5px; border-right: 4px solid #4caf50;">
+                                    <strong>✓ ${file.name}</strong>
+                                    ${result.hasGPS ? '📍 يحتوي على GPS' : '❌ لا يحتوي على GPS'}
+                                    ${result.hasHiddenData ? '🔍 يحتوي على بيانات مخفية' : ''}
+                                </div>
+                            `;
+                        } catch (error) {
+                            // Update progress to error
+                            progress.innerHTML = `
+                                <div style="margin: 10px 0; padding: 10px; background: #ffebee; border-radius: 5px; border-right: 4px solid #f44336;">
+                                    <strong>✗ ${file.name}</strong><br>
+                                    خطأ: ${error.message}
+                                </div>
+                            `;
+                        }
+                    }
+
+                    // Summary
+                    const summary = document.createElement('div');
+                    const gpsCount = this.batchResults.filter(r => r.hasGPS).length;
+                    const hiddenCount = this.batchResults.filter(r => r.hasHiddenData).length;
+                    
+                    summary.innerHTML = `
+                        <div style="margin: 20px 0; padding: 15px; background: #667eea; color: white; border-radius: 10px;">
+                            <h4>ملخص النتائج</h4>
+                            <p>إجمالي الملفات: ${files.length}</p>
+                            <p>الملفات التي تحتوي على GPS: ${gpsCount}</p>
+                            <p>الملفات التي تحتوي على بيانات مخفية: ${hiddenCount}</p>
+                        </div>
+                    `;
+                    
+                    document.getElementById('batchResultsContent').appendChild(summary);
+
+                } catch (error) {
+                    this.showError('حدث خطأ أثناء المعالجة المتعددة: ' + error.message);
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            async analyzeFileForBatch(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        try {
+                            let metadata = null;
+                            let hasGPS = false;
+                            let hasHiddenData = false;
+
+                            if (file.type.startsWith('image/')) {
+                                const img = new Image();
+                                img.onload = () => {
+                                    EXIF.getData(img, () => {
+                                        const exifData = EXIF.getAllTags(img);
+                                        metadata = { basic: exifData };
+                                        
+                                        const gpsData = this.extractGPSFromEXIF(exifData);
+                                        hasGPS = gpsData !== null;
+                                        
+                                        resolve({ file: file.name, metadata, hasGPS, hasHiddenData });
+                                    });
+                                };
+                                img.src = e.target.result;
+                            } else {
+                                // For other file types, do basic analysis
+                                resolve({ file: file.name, metadata: null, hasGPS: false, hasHiddenData: false });
+                            }
+                        } catch (error) {
+                            reject(error);
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            exportBatchResults() {
+                if (this.batchResults.length === 0) {
+                    this.showError('لا توجد نتائج للتصدير');
+                    return;
+                }
+
+                let csv = 'File Name,Has GPS,Has Hidden Data,File Size,File Type\n';
+                
+                for (const result of this.batchResults) {
+                    csv += `"${result.file}",${result.hasGPS ? 'Yes' : 'No'},${result.hasHiddenData ? 'Yes' : 'No'},${this.formatFileSize(result.file.size || 0)},${result.file.type || 'Unknown'}\n`;
+                }
+
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `batch_analysis_${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            exportBatchGPS() {
+                const gpsResults = this.batchResults.filter(r => r.hasGPS && r.metadata && r.metadata.gps);
+                
+                if (gpsResults.length === 0) {
+                    this.showError('لا توجد بيانات GPS للتصدير');
+                    return;
+                }
+
+                let kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Batch GPS Locations</name>
+    <description>Extracted GPS locations from ${gpsResults.length} files</description>`;
+
+                for (const result of gpsResults) {
+                    if (result.metadata && result.metadata.gps) {
+                        kml += `
+    <Placemark>
+      <name>${result.file}</name>
+      <description>File: ${result.file}</description>
+      <Point>
+        <coordinates>${result.metadata.gps.longitude},${result.metadata.gps.latitude}</coordinates>
+      </Point>
+    </Placemark>`;
+                    }
+                }
+
+                kml += `
+  </Document>
+</kml>`;
+
+                const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `batch_gps_${new Date().toISOString().split('T')[0]}.kml`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            // وظائف المقارنة
+            showCompareDialog() {
+                const compareDialog = document.createElement('div');
+                compareDialog.innerHTML = `
+                    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                                background: rgba(0,0,0,0.5); z-index: 1000; display: flex; 
+                                align-items: center; justify-content: center;">
+                        <div style="background: white; padding: 30px; border-radius: 15px; 
+                                    box-shadow: 0 10px 30px rgba(0,0,0,0.3); text-align: center; 
+                                    max-width: 600px; width: 90%;">
+                            <h3>مقارنة بيانات ملفين</h3>
+                            <p style="margin: 20px 0; color: #666;">
+                                اختر ملفين لمقارنة بياناتهما المخفية
+                            </p>
+                            <div style="display: flex; justify-content: space-around; margin: 20px 0;">
+                                <div style="width: 45%;">
+                                    <h4>الملف الأول</h4>
+                                    <input type="file" id="compareFile1" class="file-input-compare">
+                                </div>
+                                <div style="width: 45%;">
+                                    <h4>الملف الثاني</h4>
+                                    <input type="file" id="compareFile2" class="file-input-compare">
+                                </div>
+                            </div>
+                            <div style="margin: 20px 0;">
+                                <button class="btn" onclick="this.parentElement.parentElement.parentElement.parentElement.remove(); analyzer.startComparison();">بدء المقارنة</button>
+                                <button class="btn" onclick="this.parentElement.parentElement.parentElement.parentElement.remove();" style="background: #f44336;">إلغاء</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(compareDialog);
+            }
+
+            async startComparison() {
+                const file1 = document.getElementById('compareFile1').files[0];
+                const file2 = document.getElementById('compareFile2').files[0];
+
+                if (!file1 || !file2) {
+                    this.showError('الرجاء اختيار ملفين للمقارنة');
+                    return;
+                }
+
+                this.showLoading(true);
+
+                try {
+                    const metadata1 = await this.analyzeFileForBatch(file1);
+                    const metadata2 = await this.analyzeFileForBatch(file2);
+
+                    const comparisonResult = this.compareMetadata(metadata1, metadata2);
+                    this.displayComparison(comparisonResult, file1, file2);
+
+                } catch (error) {
+                    this.showError('حدث خطأ أثناء المقارنة: ' + error.message);
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            compareMetadata(meta1, meta2) {
+                const result = {
+                    common: {},
+                    diff1: {},
+                    diff2: {}
+                };
+
+                // Compare basic metadata
+                const allKeys = new Set([...Object.keys(meta1.metadata.basic), ...Object.keys(meta2.metadata.basic)]);
+                
+                for (const key of allKeys) {
+                    const val1 = meta1.metadata.basic[key];
+                    const val2 = meta2.metadata.basic[key];
+
+                    if (val1 !== undefined && val2 !== undefined) {
+                        if (val1 === val2) {
+                            result.common[key] = val1;
+                        } else {
+                            result.diff1[key] = val1;
+                            result.diff2[key] = val2;
+                        }
+                    } else if (val1 !== undefined) {
+                        result.diff1[key] = val1;
+                    } else {
+                        result.diff2[key] = val2;
+                    }
+                }
+
+                return result;
+            }
+
+            displayComparison(result, file1, file2) {
+                const comparisonResults = document.createElement('div');
+                comparisonResults.id = 'comparisonResults';
+                comparisonResults.innerHTML = `
+                    <div style="background: white; margin: 20px 0; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+                        <h3>نتائج المقارنة</h3>
+                        <div style="display: flex; justify-content: space-around;">
+                            <div style="width: 45%;">
+                                <h4>${file1.name}</h4>
+                                <div id="compareResult1"></div>
+                            </div>
+                            <div style="width: 45%;">
+                                <h4>${file2.name}</h4>
+                                <div id="compareResult2"></div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 20px;">
+                            <h4>البيانات المشتركة</h4>
+                            <div id="compareResultCommon"></div>
+                        </div>
+                        <button class="btn" onclick="this.parentElement.remove();" style="background: #f44336; margin-top: 20px;">إغلاق</button>
+                    </div>
+                `;
+
+                document.querySelector('.container').appendChild(comparisonResults);
+
+                // Display differences
+                let diff1Html = '';
+                for (const [key, value] of Object.entries(result.diff1)) {
+                    diff1Html += `<div class="metadata-item"><span class="metadata-label">${key}:</span> <span class="metadata-value">${value}</span></div>`;
+                }
+                document.getElementById('compareResult1').innerHTML = diff1Html || '<p>لا توجد اختلافات</p>';
+
+                let diff2Html = '';
+                for (const [key, value] of Object.entries(result.diff2)) {
+                    diff2Html += `<div class="metadata-item"><span class="metadata-label">${key}:</span> <span class="metadata-value">${value}</span></div>`;
+                }
+                document.getElementById('compareResult2').innerHTML = diff2Html || '<p>لا توجد اختلافات</p>';
+
+                // Display common data
+                let commonHtml = '';
+                for (const [key, value] of Object.entries(result.common)) {
+                    commonHtml += `<div class="metadata-item"><span class="metadata-label">${key}:</span> <span class="metadata-value">${value}</span></div>`;
+                }
+                document.getElementById('compareResultCommon').innerHTML = commonHtml || '<p>لا توجد بيانات مشتركة</p>';
+            }
+        }
+
+        // تهيئة التطبيق عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', () => {
+            window.analyzer = new LocationAnalyzer();
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('demo') === 'map') {
+                const lat = parseFloat(params.get('lat') || '24.7136');
+                const lon = parseFloat(params.get('lon') || '46.6753');
+                window.analyzer.displayMap(lat, lon);
+            }
+        });
+    </script>
+</body>
+</html>
